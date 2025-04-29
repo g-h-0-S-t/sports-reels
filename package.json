@@ -6,7 +6,7 @@
     "dev": "npm run install-python-deps && node scripts/check-videos.js && next dev",
     "build": "npm run install-python-deps && node scripts/check-videos.js && next build",
     "start": "npm run install-python-deps && node scripts/check-videos.js && next start",
-    "install-python-deps": "pip install moviepy transformers gtts requests torch || pip3 install moviepy transformers gtts requests torch",
+    "install-python-deps": "chmod -R u+w data public/videos && pip install moviepy transformers gtts requests torch || pip3 install moviepy transformers gtts requests torch",
     "generate-videos": "node scripts/check-videos.js",
     "clean-videos": "rm -rf public/videos/*.mp4 || del /q public\\videos\\*.mp4",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
