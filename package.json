@@ -6,11 +6,11 @@
     "dev": "npm run install-python-deps && node scripts/check-videos.js && next dev",
     "build": "npm run install-python-deps && node scripts/check-videos.js && next build",
     "start": "npm run install-python-deps && node scripts/check-videos.js && next start",
-    "install-python-deps": "chmod -R u+w data public/videos && pip install moviepy transformers gtts requests torch || pip3 install moviepy transformers gtts requests torch",
+    "install-python-deps": "if [ \"$OS\" != \"Windows_NT\" ]; then chmod -R u+w data public/videos; else icacls data public\\videos /grant %username%:F /T; fi && pip install moviepy transformers gtts requests torch psutil || pip3 install moviepy transformers gtts requests torch psutil",
     "generate-videos": "node scripts/check-videos.js",
-    "clean-videos": "rm -rf public/videos/*.mp4 || del /q public\\videos\\*.mp4",
+    "clean-videos": "rm -rf public/videos/* || del /q public\\videos\\*",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
-    "postinstall": "echo 'Python dependencies installed automatically on npm run dev/build/start. Manual install: pip install moviepy transformers gtts requests torch'"
+    "postinstall": "echo 'Python dependencies installed automatically on npm run dev/build/start. Manual install: pip install moviepy transformers gtts requests torch psutil'"
   },
   "dependencies": {
     "next": "^14.2.15",
