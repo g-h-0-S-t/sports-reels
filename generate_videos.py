@@ -19,12 +19,12 @@ def log_memory_usage():
 
 def fetch_images(query, count=5):
     access_key = "LLn6Z2X8dg630nsWa5k96uNtjPPrG8R91oWAE0LpAd8"
-    url = f"https://api.unsplash.com/search/photos?query={query}&per_page={count}&client_id={access_key}&w=640&h=360"
+    url = f"https://api.unsplash.com/search/photos?query={query}&per_page={count}&client_id={access_key}&w=426&h=240"
     try:
         response = requests.get(url, timeout=10)
         response.raise_for_status()
         data = response.json()
-        images = [photo['urls']['raw'] + '&w=640&h=360' for photo in data['results']]
+        images = [photo['urls']['raw'] + '&w=426&h=240' for photo in data['results']]
         logger.info(f"Fetched {len(images)} images for query: {query}")
         return images
     except Exception as e:
@@ -71,7 +71,7 @@ def create_video(celebrity, output_path, custom_script=None):
             img_data = requests.get(url, timeout=10).content
             with open(img_path, 'wb') as f:
                 f.write(img_data)
-            clip = ImageClip(img_path, duration=3)
+            clip = ImageClip(img_path, duration=2)  # 2s per image
             clips.append(clip)
             temp_image_paths.append(img_path)
             log_memory_usage()
@@ -90,7 +90,7 @@ def create_video(celebrity, output_path, custom_script=None):
             fps=15,
             preset='ultrafast',
             threads=1,
-            bitrate='500k'
+            bitrate='300k'
         )
         log_memory_usage()
         
