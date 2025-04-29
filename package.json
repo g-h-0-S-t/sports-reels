@@ -1,0 +1,26 @@
+{
+  "name": "sports-reels",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "node scripts/check-videos.js && next dev",
+    "build": "node scripts/check-videos.js && next build",
+    "start": "node scripts/check-videos.js && next start",
+    "generate-videos": "node scripts/check-videos.js",
+    "clean-videos": "rm -rf public/videos/*.mp4",
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "postinstall": "echo 'Ensure Python dependencies: pip install moviepy transformers gtts requests torch'"
+  },
+  "dependencies": {
+    "next": "^14.2.15",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "eslint-config-next": "^14.2.15"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
