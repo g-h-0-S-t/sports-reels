@@ -3,13 +3,14 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "node scripts/check-videos.js && next dev",
-    "build": "node scripts/check-videos.js && next build",
-    "start": "node scripts/check-videos.js && next start",
+    "dev": "npm run install-python-deps && node scripts/check-videos.js && next dev",
+    "build": "npm run install-python-deps && node scripts/check-videos.js && next build",
+    "start": "npm run install-python-deps && node scripts/check-videos.js && next start",
+    "install-python-deps": "pip install moviepy transformers gtts requests torch || pip3 install moviepy transformers gtts requests torch",
     "generate-videos": "node scripts/check-videos.js",
-    "clean-videos": "rm -rf public/videos/*.mp4",
+    "clean-videos": "rm -rf public/videos/*.mp4 || del /q public\\videos\\*.mp4",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
-    "postinstall": "echo 'Ensure Python dependencies: pip install moviepy transformers gtts requests torch'"
+    "postinstall": "echo 'Python dependencies installed automatically on npm run dev/build/start. Manual install: pip install moviepy transformers gtts requests torch'"
   },
   "dependencies": {
     "next": "^14.2.15",
