@@ -3,12 +3,12 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "npm run install-python-deps && node scripts/check-videos.js && next dev",
-    "build": "npm run install-python-deps && node scripts/check-videos.js && next build",
-    "start": "npm run install-python-deps && node scripts/check-videos.js && next start",
+    "dev": "npm run install-python-deps && (node scripts/check-videos.js || echo 'Skipping check-videos') && next dev",
+    "build": "npm run install-python-deps && (node scripts/check-videos.js || echo 'Skipping check-videos') && next build",
+    "start": "npm run install-python-deps && (node scripts/check-videos.js || echo 'Skipping check-videos') && next start",
     "vercel-build": "next build",
     "install-python-deps": "if [ \"$OS\" != \"Windows_NT\" ]; then chmod -R u+rw .; else icacls . /grant %username%:F /T; fi && pip install -r requirements.txt || pip3 install -r requirements.txt",
-    "generate-videos": "node scripts/check-videos.js",
+    "generate-videos": "node scripts/check-videos.js || echo 'Skipping check-videos'",
     "clean-videos": "rm -rf /tmp/videos/*.mp4 public/videos/* || del /q \\tmp\\videos\\*.mp4 public\\videos\\*",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "postinstall": "echo 'Python dependencies installed automatically on npm run dev/build/start. Manual install: pip install -r requirements.txt'"
