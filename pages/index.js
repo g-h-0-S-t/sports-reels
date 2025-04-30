@@ -38,7 +38,7 @@ export default function Home({ videos: initialVideos }) {
           if (entry.isIntersecting && index !== -1) {
             video.play().catch((error) => {
               console.error('Autoplay failed:', error);
-              alert('Please interact with the page to enable audio playback.');
+              // alert('Please interact with the page to enable audio playback.');
             });
             setCurrentVideo(index);
           } else {
