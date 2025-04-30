@@ -6,7 +6,7 @@
     "dev": "npm run install-python-deps && node scripts/check-videos.js && next dev",
     "build": "npm run install-python-deps && node scripts/check-videos.js && next build",
     "start": "npm run install-python-deps && node scripts/check-videos.js && next start",
-    "install-python-deps": "if [ \"$OS\" != \"Windows_NT\" ]; then chmod -R u+w data public/videos; else icacls data public\\videos /grant %username%:F /T; fi && pip install moviepy transformers gtts requests torch psutil || pip3 install moviepy transformers gtts requests torch psutil",
+    "install-python-deps": "if [ \"$OS\" != \"Windows_NT\" ]; then chmod -R u+rw .; else icacls . /grant %username%:F /T; fi && pip install moviepy transformers gtts requests torch psutil || pip3 install moviepy transformers gtts requests torch psutil",
     "generate-videos": "node scripts/check-videos.js",
     "clean-videos": "rm -rf public/videos/* || del /q public\\videos\\*",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
