@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: sports-reels
+    env: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_VERSION
+        value: 18
+      - key: PYTHON_VERSION
+        value: 3.8
+    preDeployCommand: pip install -r requirements.txt

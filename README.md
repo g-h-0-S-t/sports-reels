@@ -1,7 +1,6 @@
 # Sports Reels
 
-This project creates AI-generated history videos for sports celebrities and displays them in a TikTok-style reel format using Next.js.  
-You can search an existing sports player, or add a new one.
+This project creates AI-generated history videos for sports celebrities and displays them in a TikTok-style reel format using Next.js.
 
 ## Prerequisites
 
@@ -32,11 +31,20 @@ You can search an existing sports player, or add a new one.
    pip install transformers moviepy gtts requests torch
    ```
 
-5. **Generate videos and start the Next.js app:**  
+5. **Generate videos:**  
+   - Run the Python script to create videos:
+
+   ```bash
+   python generate_videos.py
+   ```
+
+   - This will generate messi-history.mp4 and serena-history.mp4 in the public/videos/ folder.
+
+6. **Start the Next.js app:**  
 
    ```bash
    npm run dev
    ```
 
-6. **Access the app:**  
+7. **Access the app:**  
    - Open your browser and go to <http://localhost:3000>

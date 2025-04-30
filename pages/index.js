@@ -25,6 +25,7 @@ export default function Home({ videos: initialVideos }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState(null);
   const videoRefs = useRef([]);
+  const isVercel = process.env.VERCEL;
 
   useEffect(() => {
     if (!isStarted || displayedVideos.length === 0) return;
@@ -37,7 +38,7 @@ export default function Home({ videos: initialVideos }) {
           if (entry.isIntersecting && index !== -1) {
             video.play().catch((error) => {
               console.error('Autoplay failed:', error);
-              // alert('Please interact with the page to enable audio playback.');
+              alert('Please interact with the page to enable audio playback.');
             });
             setCurrentVideo(index);
           } else {
@@ -49,7 +50,6 @@ export default function Home({ videos: initialVideos }) {
       { threshold: 0.7 }
     );
 
-    // Observe only valid elements
     videoRefs.current.forEach((video, index) => {
       if (video && video instanceof Element) {
         observer.observe(video);
@@ -63,19 +63,25 @@ export default function Home({ videos: initialVideos }) {
     };
   }, [isStarted, displayedVideos]);
 
+  useEffect(() => {
+    console.log('Videos state updated:', videos);
+    console.log('Displayed videos:', displayedVideos);
+  }, [videos, displayedVideos]);
+
   const handleSearch = (e) => {
     const query = e.target.value.toLowerCase();
     setSearchQuery(query);
-    // Reset videoRefs when search changes
     videoRefs.current = Array(displayedVideos.length).fill(null);
+    let filtered = videos; // Default to all videos
     if (query.trim() === '') {
       setDisplayedVideos(videos);
     } else {
-      const filtered = videos.filter((video) =>
+      filtered = videos.filter((video) =>
         video.celebrityName.toLowerCase().includes(query)
       );
       setDisplayedVideos(filtered);
     }
+    console.log('Search query:', query, 'Filtered videos:', filtered);
   };
 
   const handleInputChange = (e) => {
@@ -87,17 +93,32 @@ export default function Home({ videos: initialVideos }) {
     }));
   };
 
+  const pollVideo = async (videoUrl, maxAttempts = 180, interval = 5000) => {
+    const apiUrl = isVercel ? `/api/video?path=${encodeURIComponent(videoUrl)}` : videoUrl;
+    for (let i = 0; i < maxAttempts; i++) {
+      try {
+        const response = await fetch(apiUrl);
+        if (response.ok) {
+          console.log(`Video found: ${apiUrl}`);
+          return true;
+        }
+      } catch (err) {
+        console.log(`Video not ready: ${apiUrl}`);
+      }
+      await new Promise(resolve => setTimeout(resolve, interval));
+    }
+    throw new Error('Video generation timed out');
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
 
-    // Check if celebrityName already exists
     const existingVideo = videos.find(
       (video) => video.celebrityName.toLowerCase() === formData.celebrityName.toLowerCase()
     );
 
     if (existingVideo) {
-      // Display existing video
       setDisplayedVideos([existingVideo]);
       setFormData({
         celebrityName: '',
@@ -106,10 +127,10 @@ export default function Home({ videos: initialVideos }) {
         customScript: '',
         videoUrl: ''
       });
+      console.log('Existing video found:', existingVideo);
       return;
     }
 
-    // Proceed with video generation
     setIsGenerating(true);
     try {
       const response = await fetch('/api/generate-video', {
@@ -119,11 +140,13 @@ export default function Home({ videos: initialVideos }) {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to generate video');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to initiate video generation');
       }
 
       const newVideo = await response.json();
       setVideos((prev) => [...prev, newVideo]);
+      await pollVideo(newVideo.videoUrl);
       setDisplayedVideos((prev) => [...prev, newVideo]);
       setFormData({
         celebrityName: '',
@@ -132,7 +155,9 @@ export default function Home({ videos: initialVideos }) {
         customScript: '',
         videoUrl: ''
       });
+      console.log('New video added:', newVideo);
     } catch (err) {
+      console.error('Submit error:', err.message);
       setError(err.message);
     } finally {
       setIsGenerating(false);
@@ -223,7 +248,7 @@ export default function Home({ videos: initialVideos }) {
             <div key={video.id} className="reel-item">
               <video
                 ref={(el) => (videoRefs.current[index] = el)}
-                src={video.videoUrl}
+                src={isVercel ? `/api/video?path=${encodeURIComponent(video.videoUrl)}` : video.videoUrl}
                 controls
                 loop
                 playsInline

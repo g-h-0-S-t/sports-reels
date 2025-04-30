@@ -1,9 +1,9 @@
 import { exec } from 'child_process';
 import fs from 'fs';
 import path from 'path';
-import util from 'util';
+import { promisify } from 'util';
 
-const execPromise = util.promisify(exec);
+const execPromise = promisify(exec);
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -13,41 +13,63 @@ export default async function handler(req, res) {
   const { celebrityName, title, description, customScript, videoUrl } = req.body;
 
   if (!celebrityName || !title || !description || !customScript || !videoUrl) {
-    return res.status(400).json({ error: 'All fields are required' });
+    return res.status(400).json({ error: 'Missing required fields' });
   }
 
+  const videoId = Date.now().toString();
+  const isVercel = process.env.VERCEL;
+  const videosDir = isVercel ? '/tmp/videos' : path.join(process.cwd(), 'public', 'videos');
+  const videosJsonPath = isVercel ? '/tmp/videos.json' : path.join(process.cwd(), 'data', 'videos.json');
+  const newVideo = {
+    id: videoId,
+    celebrityName,
+    title,
+    description,
+    customScript,
+    videoUrl: `/videos/${path.basename(videoUrl)}`
+  };
+
   try {
-    // Read current videos.json
-    const filePath = path.join(process.cwd(), 'data', 'videos.json');
-    const fileContents = fs.readFileSync(filePath, 'utf8');
-    const data = JSON.parse(fileContents);
+    // Clean only temporary files (.mp3, .jpg), preserve .mp4
+    if (fs.existsSync(videosDir)) {
+      fs.readdirSync(videosDir).forEach(file => {
+        if (file.endsWith('.mp3') || file.endsWith('.jpg')) {
+          fs.unlinkSync(path.join(videosDir, file));
+          console.log(`Deleted temporary file: ${file}`);
+        }
+      });
+      console.log(`Cleaned temporary files in ${videosDir}`);
+    } else {
+      fs.mkdirSync(videosDir, { recursive: true });
+      console.log(`Created ${videosDir}`);
+    }
 
-    // Generate new ID
-    const newId = String(Math.max(...data.videos.map(v => parseInt(v.id))) + 1);
+    // Write to videos.json
+    let videosData = { videos: [] };
+    if (fs.existsSync(videosJsonPath)) {
+      videosData = JSON.parse(fs.readFileSync(videosJsonPath, 'utf8'));
+    }
+    videosData.videos.push(newVideo);
+    fs.writeFileSync(videosJsonPath, JSON.stringify(videosData, null, 2));
+    console.log(`Wrote video metadata to ${videosJsonPath}`);
 
-    // Create new video entry
-    const newVideo = {
-      id: newId,
-      title,
-      description,
-      celebrityName,
-      videoUrl,
-      customScript
-    };
-
-    // Update videos.json
-    data.videos.push(newVideo);
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
-
-    // Run generate_videos.py for the new entry
+    // Run generate_videos.py
+    const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
     const scriptPath = path.join(process.cwd(), 'generate_videos.py');
-    const command = `python "${scriptPath}" --single "${newId}"`;
-    await execPromise(command);
+    const logPath = isVercel ? '/tmp/generate_videos.log' : path.join(process.cwd(), 'generate_videos.log');
+    const command = `${pythonCommand} "${scriptPath}" --single ${videoId} > ${logPath} 2>&1`;
+    console.log(`Executing: ${command}`);
 
-    // Return the new video entry
-    res.status(200).json(newVideo);
+    try {
+      await execPromise(command);
+      console.log('Video generation completed');
+      res.status(200).json(newVideo);
+    } catch (error) {
+      console.error(`Video generation failed: ${error.message}`);
+      res.status(500).json({ error: `Video generation failed: ${error.message}` });
+    }
   } catch (error) {
-    console.error('Error generating video:', error);
-    res.status(500).json({ error: 'Failed to generate video' });
+    console.error('Error in generate-video API:', error.message);
+    res.status(500).json({ error: `Failed to initiate video generation: ${error.message}` });
   }
 }
