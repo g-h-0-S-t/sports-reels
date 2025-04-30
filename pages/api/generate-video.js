@@ -54,7 +54,7 @@ export default async function handler(req, res) {
     console.log(`Wrote video metadata to ${videosJsonPath}`);
 
     // Run generate_videos.py
-    const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
+    const pythonCommand = process.platform === 'win32' ? 'python' : 'python';//'python3';
     const scriptPath = path.join(process.cwd(), 'generate_videos.py');
     const logPath = isVercel ? '/tmp/generate_videos.log' : path.join(process.cwd(), 'generate_videos.log');
     const command = isVercel
