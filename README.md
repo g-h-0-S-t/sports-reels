@@ -1,4 +1,4 @@
-# Sports Reels  
+# Sports Reels
 
 This project creates AI-generated history videos for sports celebrities and displays them in a TikTok-style reel format using Next.js.
 

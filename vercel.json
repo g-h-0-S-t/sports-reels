@@ -1,25 +1,15 @@
 {
-    "functions": {
-      "api/generate-video.js": {
-        "memory": 512,
-        "maxDuration": 60
-      },
-      "api/video.js": {
-        "memory": 512,
-        "maxDuration": 10
-      }
+  "functions": {
+    "api/generate-video.js": {
+      "memory": 512,
+      "maxDuration": 60
     },
-    "builds": [
-      {
-        "src": "package.json",
-        "use": "@vercel/node"
-      },
-      {
-        "src": "generate_videos.py",
-        "use": "@vercel/python"
-      }
-    ],
-    "env": {
-      "PYTHON_VERSION": "3.8"
+    "api/video.js": {
+      "memory": 512,
+      "maxDuration": 10
     }
+  },
+  "env": {
+    "PYTHON_VERSION": "3.8"
   }
+}
