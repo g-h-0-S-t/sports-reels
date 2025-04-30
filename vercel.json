@@ -1,14 +1,24 @@
 {
-  "functions": {
-    "pages/api/generate-video.js": {
-      "memory": 512,
-      "maxDuration": 60
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/node"
     },
-    "pages/api/video.js": {
-      "memory": 512,
-      "maxDuration": 10
+    {
+      "src": "generate_videos.py",
+      "use": "@vercel/python",
+      "config": {
+        "installCommand": "pip install -r requirements.txt",
+        "buildCommand": ""
+      }
     }
-  },
+  ],
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "/api/:path*"
+    }
+  ],
   "env": {
     "PYTHON_VERSION": "3.8"
   }
