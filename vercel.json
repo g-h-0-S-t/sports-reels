@@ -1,0 +1,39 @@
+{
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/node",
+      "config": {
+        "installCommand": "npm install",
+        "buildCommand": "npm run vercel-build"
+      }
+    },
+    {
+      "src": "generate_videos.py",
+      "use": "@vercel/python",
+      "config": {
+        "installCommand": "pip3 install -r requirements.txt"
+      }
+    }
+  ],
+  "framework": "nextjs",
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "/api/:path*"
+    }
+  ],
+  "functions": {
+    "api/generate-video.js": {
+      "memory": 512,
+      "maxDuration": 60
+    },
+    "api/video.js": {
+      "memory": 512,
+      "maxDuration": 10
+    }
+  },
+  "env": {
+    "PYTHON_VERSION": "3.9"
+  }
+}
