@@ -1,10 +1,10 @@
 {
   "functions": {
-    "api/generate-video.js": {
+    "pages/api/generate-video.js": {
       "memory": 512,
       "maxDuration": 60
     },
-    "api/video.js": {
+    "pages/api/video.js": {
       "memory": 512,
       "maxDuration": 10
     }
