@@ -63,6 +63,14 @@
       "celebrityName": "Kapil Dev",
       "videoUrl": "/videos/kapil-dev-history.mp4",
       "customScript": "Before Virat Kohli's aggression or Dhoni’s calm, there was Kapil Dev—a fast-bowling all-rounder with a lion’s heart and the charisma of a born leader. Rising from Chandigarh with nothing but raw pace and determination, Kapil didn't just play cricket—he revolutionized it for India. With fearless batting, lethal swing bowling, and a smile that masked fire, he took India to its first-ever World Cup triumph in 1983, stunning the cricketing world and igniting a billion dreams.\n\nWhether smashing a jaw-dropping 175 against Zimbabwe* or breaking Richard Hadlee’s bowling record, Kapil was always ahead of his time—a trailblazer, a game-changer, and a true captain marvel."
+    },
+    {
+      "id": "1745988682682",
+      "celebrityName": "Michael Schumacher",
+      "title": "Michael Schumacher’s Formula 1 Dynasty",
+      "description": "The story of a racing legend who redefined greatness.",
+      "customScript": "Michael Schumacher, Germany’s Formula 1 icon, dominated the track! Born in 1969, he clinched 7 World Championships, including 5 straight with Ferrari. With 91 wins and unmatched skill, Schumacher’s legacy as a motorsport titan endures!",
+      "videoUrl": "/videos/michael-schumacher-history.mp4"
     }
   ]
 }

@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "npm run ensure-python && npm run install-python-deps && (node scripts/check-videos.js || echo 'Skipping check-videos') && next dev",
-    "build": "npm run ensure-python && npm run install-python-deps && (node scripts/check-videos.js || echo 'Skipping check-videos') && next build",
-    "start": "next start",
-    "vercel-build": "npm run install-python-deps && (node scripts/check-videos.js || echo 'Skipping check-videos') && next build",
+    "dev": "npm run ensure-python && npm run install-python-deps && (node scripts/check-videos.js || echo 'Skipping check-videos') && npx next dev",
+    "build": "npm run ensure-python && npm run install-python-deps && (node scripts/check-videos.js || echo 'Skipping check-videos') && npx next build",
+    "start": "npx next start",
+    "vercel-build": "npm run install-python-deps && (node scripts/check-videos.js || echo 'Skipping check-videos') && npx next build",
     "ensure-python": "python3 --version || (echo 'Python 3 not found. Attempting to install...'; npm run install-python3)",
     "install-python3": "if [ \"$VERCEL\" ]; then echo 'Vercel: Using @vercel/python runtime' && exit 0; elif [ \"$OS\" != \"Windows_NT\" ]; then (command -v apt-get && sudo apt-get update && sudo apt-get install -y python3 python3-pip) || (command -v brew && brew install python3); else echo 'Windows: Please install Python 3 manually from https://www.python.org/downloads/' && exit 1; fi",
     "generate-videos": "node scripts/check-videos.js || echo 'Skipping check-videos'",
@@ -16,13 +16,13 @@
     "postinstall": "echo 'Python dependencies installed automatically on npm run dev/build/vercel-build. Manual install: pip3 install -r requirements.txt'"
   },
   "dependencies": {
-    "next": "^15.0.1",
+    "next": "^12.3.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "eslint": "^8.57.0",
-    "eslint-config-next": "^15.0.1"
+    "eslint-config-next": "^12.3.1"
   },
   "engines": {
     "node": ">=18.0.0"
