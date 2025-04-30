@@ -2,14 +2,9 @@
   "builds": [
     {
       "src": "package.json",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "generate_videos.py",
-      "use": "@vercel/python",
+      "use": "@vercel/node",
       "config": {
-        "installCommand": "pip install -r requirements.txt",
-        "buildCommand": ""
+        "buildCommand": "pip install -r requirements.txt && npm run build"
       }
     }
   ],
