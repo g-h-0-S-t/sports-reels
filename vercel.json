@@ -23,16 +23,6 @@
       "destination": "/api/:path*"
     }
   ],
-  "functions": {
-    "api/generate-video.js": {
-      "memory": 512,
-      "maxDuration": 60
-    },
-    "api/video.js": {
-      "memory": 512,
-      "maxDuration": 10
-    }
-  },
   "env": {
     "PYTHON_VERSION": "3.9"
   }
