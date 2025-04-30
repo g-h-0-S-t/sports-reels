@@ -57,28 +57,36 @@ def create_video(celebrity, output_path, custom_script=None):
         
         # Create audio
         logger.info(f"Saving audio to: {audio_path}")
-        tts = gTTS(script)
+        tts = gTTS(script, slow=False)  # Faster speech for shorter audio
         tts.save(audio_path)
         log_memory_usage()
+        
+        # Load and trim audio to 10s
+        audio = AudioFileClip(audio_path)
+        audio_duration = min(audio.duration, 10.0)  # Cap at 10s
+        logger.info(f"Audio duration: {audio_duration}s")
+        audio = audio.subclipped(0, audio_duration)
         
         # Fetch images
         image_urls = fetch_images(celebrity)
         clips = []
         temp_image_paths = []
+        duration_per_image = 2.0  # 2s per image
+        total_video_duration = duration_per_image * len(image_urls)  # 10s for 5 images
+        logger.info(f"Total video duration: {total_video_duration}s, frames: {int(total_video_duration * 15)}")
         for i, url in enumerate(image_urls):
             img_path = os.path.join(os.path.dirname(output_path), f"temp_{i}.jpg")
             logger.info(f"Saving image to: {img_path}")
             img_data = requests.get(url, timeout=10).content
             with open(img_path, 'wb') as f:
                 f.write(img_data)
-            clip = ImageClip(img_path, duration=2)  # 2s per image
+            clip = ImageClip(img_path, duration=duration_per_image)
             clips.append(clip)
             temp_image_paths.append(img_path)
             log_memory_usage()
         
         # Create video
         video = concatenate_videoclips(clips, method="compose")
-        audio = AudioFileClip(audio_path)
         final_video = video.with_audio(audio)
         
         # Write video
