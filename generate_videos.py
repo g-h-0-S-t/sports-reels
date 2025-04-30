@@ -156,21 +156,21 @@ def main():
     logger.info(f"Current working directory: {os.getcwd()}")
     log_memory_usage()
 
-    is_vercel = os.getenv('VERCEL')
-    videos_json_path = '/tmp/videos.json' if is_vercel else './data/videos.json'
-    output_dir = '/tmp/videos' if is_vercel else './public/videos'
+    DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
+    VIDEOS_JSON = os.path.join(DATA_DIR, 'videos.json')
+    PUBLIC_VIDEOS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'public', 'videos')
     try:
-        with open(videos_json_path, 'r') as f:
+        with open(VIDEOS_JSON, 'r') as f:
             video_data = json.load(f)
     except FileNotFoundError:
-        logger.error(f"{videos_json_path} not found")
+        logger.error(f"{VIDEOS_JSON} not found")
         sys.exit(1)
     except json.JSONDecodeError:
-        logger.error(f"Invalid JSON in {videos_json_path}")
+        logger.error(f"Invalid JSON in {VIDEOS_JSON}")
         sys.exit(1)
 
-    os.makedirs(output_dir, exist_ok=True)
-    logger.info(f"Output directory: {output_dir}")
+    os.makedirs(PUBLIC_VIDEOS_DIR, exist_ok=True)
+    logger.info(f"Output directory: {PUBLIC_VIDEOS_DIR}")
 
     if args.single:
         video = next((v for v in video_data['videos'] if v['id'] == args.single), None)
@@ -179,7 +179,7 @@ def main():
             sys.exit(1)
         celebrity = video['celebrityName']
         file_name = os.path.basename(video['videoUrl']).replace('.mp4', '') + '.mp4'
-        output_path = os.path.join(output_dir, file_name)
+        output_path = os.path.join(PUBLIC_VIDEOS_DIR, file_name)
         custom_script = video.get('customScript')
         logger.info(f"Generating video for {celebrity} at {output_path}")
         create_video(celebrity, output_path, custom_script)
@@ -187,7 +187,7 @@ def main():
         for video in video_data['videos']:
             celebrity = video['celebrityName']
             file_name = os.path.basename(video['videoUrl']).replace('.mp4', '') + '.mp4'
-            output_path = os.path.join(output_dir, file_name)
+            output_path = os.path.join(PUBLIC_VIDEOS_DIR, file_name)
             custom_script = video.get('customScript')
             logger.info(f"Generating video for {celebrity} at {output_path}")
             create_video(celebrity, output_path, custom_script)

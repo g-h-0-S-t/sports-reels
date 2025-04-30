@@ -3,20 +3,20 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "npm run ensure-python && npm run install-python-deps && (node scripts/check-videos.js || echo 'Skipping check-videos') && npx next dev",
-    "build": "npm run ensure-python && npm run install-python-deps && (node scripts/check-videos.js || echo 'Skipping check-videos') && npx next build",
-    "start": "npx next start",
-    "vercel-build": "npm run install-python-deps && (node scripts/check-videos.js || echo 'Skipping check-videos') && npx next build",
+    "dev": "npm run ensure-python && npm run install-python-deps && (node scripts/check-videos.js || echo 'Skipping check-videos') && next dev",
+    "build": "npm run ensure-python && npm run install-python-deps && next build",
+    "start": "next start",
+    "vercel-build": "pip3 install -r requirements.txt && next build",
     "ensure-python": "python3 --version || (echo 'Python 3 not found. Attempting to install...'; npm run install-python3)",
     "install-python3": "if [ \"$VERCEL\" ]; then echo 'Vercel: Using @vercel/python runtime' && exit 0; elif [ \"$OS\" != \"Windows_NT\" ]; then (command -v apt-get && sudo apt-get update && sudo apt-get install -y python3 python3-pip) || (command -v brew && brew install python3); else echo 'Windows: Please install Python 3 manually from https://www.python.org/downloads/' && exit 1; fi",
-    "generate-videos": "node scripts/check-videos.js || echo 'Skipping check-videos'",
+    "generate-videos": "python3 generate_videos.py",
     "clean-videos": "rm -rf /tmp/videos/*.mp4 public/videos/* || del /q \\tmp\\videos\\*.mp4 public\\videos\\*",
     "install-python-deps": "if [ \"$OS\" != \"Windows_NT\" ]; then chmod -R u+rw .; else icacls . /grant %username%:F /T; fi && pip3 install -r requirements.txt",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "postinstall": "echo 'Python dependencies installed automatically on npm run dev/build/vercel-build. Manual install: pip3 install -r requirements.txt'"
   },
   "dependencies": {
-    "next": "^12.3.1",
+    "next": "^15.3.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

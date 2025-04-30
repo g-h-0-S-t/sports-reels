@@ -71,6 +71,14 @@
       "description": "The story of a racing legend who redefined greatness.",
       "customScript": "Michael Schumacher, Germany’s Formula 1 icon, dominated the track! Born in 1969, he clinched 7 World Championships, including 5 straight with Ferrari. With 91 wins and unmatched skill, Schumacher’s legacy as a motorsport titan endures!",
       "videoUrl": "/videos/michael-schumacher-history.mp4"
+    },
+    {
+      "id": "1745994261249",
+      "celebrityName": "Rahul Dravid",
+      "title": "Rahul \"The Wall\" Dravid",
+      "description": "Meet the Wall — Rahul Dravid",
+      "customScript": "Not just a cricketer, but a masterclass in patience, precision, and quiet dominance. While others chased the spotlight, he built fortresses with his bat. Unshakeable at the crease, graceful under pressure, Dravid turned grit into art and gave Indian cricket its spine. Captain, coach, mentor — he’s the calm force behind countless triumphs. You don’t just watch Rahul Dravid. You learn from him.",
+      "videoUrl": "/videos/rahul-dravid-history.mp4"
     }
   ]
 }

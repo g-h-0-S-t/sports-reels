@@ -16,7 +16,9 @@
       }
     }
   ],
+  "buildCommand": "npm run vercel-build",
   "framework": "nextjs",
+  "outputDirectory": "public",
   "rewrites": [
     {
       "source": "/api/:path*",
@@ -24,6 +26,7 @@
     }
   ],
   "env": {
-    "PYTHON_VERSION": "3.9"
+    "PYTHON_VERSION": "3.9",
+    "PYTHONPATH": "."
   }
 }
