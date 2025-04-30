@@ -43,7 +43,7 @@ async function checkVideos() {
 
     // Run generate_videos.py with python3 for cross-platform compatibility
     console.log('Regenerating videos...');
-    const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
+    const pythonCommand = process.platform === 'win32' ? 'python' : 'python';//'python3';
     const { stdout, stderr } = await execPromise(`${pythonCommand} generate_videos.py`);
     console.log(stdout);
     if (stderr) {
