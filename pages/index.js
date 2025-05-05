@@ -1,58 +1,39 @@
 import { useEffect, useRef, useState } from 'react';
 import fetch from 'node-fetch';
-import { readFileSync } from 'fs';
-import { join } from 'path';
 
 export async function getStaticProps() {
-  const repoPath = process.env.NODE_ENV === 'development'
-    ? '/Users/ribhubiswas/Desktop/data/experiments/sports-reels-videos'
-    : '/app/sports-reels-videos';
-  const videosJsonPath = join(repoPath, 'videos.json');
+  const videosJsonUrl = `https://api.github.com/repos/g-h-0-S-t/sports-reels-videos/contents/videos.json?ref=main&t=${Date.now()}`;
+  const proxyUrl = new URL('/api/proxy-json', process.env.NODE_ENV === 'development'
+    ? 'http://localhost:3000'
+    : process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000');
+  proxyUrl.searchParams.append('url', videosJsonUrl);
+  proxyUrl.searchParams.append('token', process.env.GITHUB_TOKEN);
 
   try {
-    console.log(`[getStaticProps] Reading local videos.json: ${videosJsonPath}`);
-    const videosData = JSON.parse(readFileSync(videosJsonPath, 'utf-8'));
-    console.log(`[getStaticProps] Fetched videos.json:`, videosData.videos);
-    return { 
+    console.log(`[getStaticProps] Fetching videos.json via proxy: ${proxyUrl}`);
+    const response = await fetch(proxyUrl, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to fetch videos.json: ${response.status}`);
+    }
+    const data = await response.json();
+    const videosData = JSON.parse(Buffer.from(data.content, 'base64').toString('utf-8'));
+    console.log(`[getStaticProps] Fetched videos.json from GitHub:`, videosData.videos);
+    return {
       props: { videos: videosData.videos || [] },
       revalidate: 60
     };
   } catch (error) {
-    console.error(`[getStaticProps] Error reading local videos.json: ${error.message}`);
-    // Fallback to GitHub API
-    const videosJsonUrl = `https://api.github.com/repos/g-h-0-S-t/sports-reels-videos/contents/videos.json?ref=main&t=${Date.now()}`;
-    const proxyUrl = new URL('/api/proxy-json', process.env.NODE_ENV === 'development' 
-      ? 'http://localhost:3000' 
-      : process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000');
-    proxyUrl.searchParams.append('url', videosJsonUrl);
-    proxyUrl.searchParams.append('token', process.env.GITHUB_TOKEN);
-
-    try {
-      console.log(`[getStaticProps] Fetching videos.json via proxy: ${proxyUrl}`);
-      const response = await fetch(proxyUrl, {
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
-        }
-      });
-      if (!response.ok) {
-        throw new Error(`Failed to fetch videos.json: ${response.status}`);
-      }
-      const data = await response.json();
-      const videosData = JSON.parse(Buffer.from(data.content, 'base64').toString('utf-8'));
-      console.log(`[getStaticProps] Fetched videos.json from GitHub:`, videosData.videos);
-      return { 
-        props: { videos: videosData.videos || [] },
-        revalidate: 60
-      };
-    } catch (fallbackError) {
-      console.error(`[getStaticProps] Fallback error: ${fallbackError.message}`);
-      return { 
-        props: { videos: [] },
-        revalidate: 60
-      };
-    }
+    console.error(`[getStaticProps] Error fetching videos.json: ${error.message}`);
+    return {
+      props: { videos: [] },
+      revalidate: 60
+    };
   }
 }
 
@@ -127,7 +108,6 @@ export default function Home({ videos: initialVideos }) {
     console.log('[State Update] Videos:', videos);
     console.log('[State Update] Displayed videos:', displayedVideos);
     console.log('[State Update] Current video index:', currentVideo);
-    console.log('[State Update] Has user interacted:', videoRefs.current.length);
     console.log('[State Update] Is form active:', isFormActive);
     console.log('[State Update] Is generating:', isGenerating);
     console.log('[State Update] Refresh key:', refreshKey);
@@ -214,7 +194,7 @@ export default function Home({ videos: initialVideos }) {
         const controller = new AbortController();
         const id = setTimeout(() => controller.abort(), timeout);
         try {
-          const absoluteUrl = url.startsWith('/') 
+          const absoluteUrl = url.startsWith('/')
             ? `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}${url}`
             : url;
           const response = await fetch(absoluteUrl, { ...options, signal: controller.signal });
@@ -250,14 +230,14 @@ export default function Home({ videos: initialVideos }) {
           'Expires': '0'
         }
       }, 30000);
-      
+
       if (!response.ok) {
         throw new Error(`Failed to refresh videos: ${response.status}`);
       }
 
       const { videos: newVideos } = await response.json();
       console.log('[Refresh] Refreshed videos:', newVideos);
-      
+
       setVideos([...newVideos]);
       setDisplayedVideos([...newVideos]);
       setRefreshKey(prev => prev + 1);
@@ -290,7 +270,7 @@ export default function Home({ videos: initialVideos }) {
 
       const { videoUrl, videos: newVideos } = await response.json();
       console.log('[Submit] API response:', { videoUrl, videos: newVideos });
-      
+
       try {
         await pollVideo(videoUrl);
         console.log('[Submit] Video polling successful');
@@ -312,8 +292,8 @@ export default function Home({ videos: initialVideos }) {
       }
     } catch (err) {
       console.error('[Submit] Error:', err.message);
-      setError(err.message === 'signal is aborted without reason' 
-        ? 'Request timed out, but video may still be generating' 
+      setError(err.message === 'signal is aborted without reason'
+        ? 'Request timed out, but video may still be generating'
         : `Failed to generate video: ${err.message}. Check server logs for details.`);
     } finally {
       console.log('[Submit] Resetting isGenerating');
@@ -480,7 +460,7 @@ export default function Home({ videos: initialVideos }) {
           height: 5px;
           background: #888;
           border-radius: 50%;
-          box-shadow: 
+          box-shadow:
             15px 0 0 #888,
             0 15px 0 #888,
             15px 15px 0 #888,
