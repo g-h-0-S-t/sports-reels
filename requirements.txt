@@ -4,7 +4,7 @@ requests==2.32.3
 numpy==1.26.4
 imageio-ffmpeg==0.5.1
 gTTS==2.5.3
-decorator==5.1.1
+decorator==4.4.2
 proglog==0.1.10
 imageio==2.34.2
 tqdm==4.66.5
