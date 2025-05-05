@@ -1,12 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
-import fs from 'fs';
-import path from 'path';
+import fetch from 'node-fetch';
 
 export async function getStaticProps() {
-  const filePath = path.join(process.cwd(), 'data', 'videos.json');
-  const fileContents = fs.readFileSync(filePath, 'utf8');
-  const videos = JSON.parse(fileContents).videos;
-  return { props: { videos } };
+  const videosJsonUrl = 'https://raw.githubusercontent.com/g-h-0-S-t/sports-reels-videos/main/videos.json';
+  try {
+    const response = await fetch(videosJsonUrl);
+    if (!response.ok) {
+      console.error(`Failed to fetch videos.json: ${response.status}`);
+      return { props: { videos: [] } };
+    }
+    const videosData = await response.json();
+    return { props: { videos: videosData.videos || [] } };
+  } catch (error) {
+    console.error(`Error fetching videos.json: ${error.message}`);
+    return { props: { videos: [] } };
+  }
 }
 
 export default function Home({ videos: initialVideos }) {
