@@ -149,6 +149,9 @@ def create_video(celebrity, output_path, custom_script=None):
 def main():
     parser = argparse.ArgumentParser(description="Generate sports reels videos")
     parser.add_argument('--single', type=str, help="ID of a single video to generate")
+    parser.add_argument('--celebrity', type=str, help="Celebrity name for single video")
+    parser.add_argument('--video-url', type=str, help="Video URL for single video")
+    parser.add_argument('--custom-script', type=str, help="Custom script for single video")
     args = parser.parse_args()
 
     logger.info("Starting video generation")
@@ -158,41 +161,40 @@ def main():
     logger.info(f"Current working directory: {os.getcwd()}")
     log_memory_usage()
 
-    VIDEOS_JSON_URL = 'https://raw.githubusercontent.com/g-h-0-S-t/sports-reels-videos/main/videos.json'
     TEMP_VIDEOS_DIR = '/tmp/videos' if os.environ.get('NODE_ENV') == 'production' else os.path.join(os.path.dirname(os.path.abspath(__file__)), 'temp', 'videos')
     
-    # Fetch videos.json from GitHub
-    video_data = {'videos': []}
-    try:
-        response = requests.get(VIDEOS_JSON_URL, timeout=10)
-        response.raise_for_status()
-        video_data = response.json()
-        logger.info("Fetched videos.json from GitHub")
-    except requests.exceptions.HTTPError as e:
-        if e.response.status_code == 404:
-            logger.info("videos.json not found in repo, using empty array")
-        else:
-            logger.error(f"Failed to fetch videos.json: {e}")
-            sys.exit(1)
-    except Exception as e:
-        logger.error(f"Error fetching videos.json: {e}")
-        sys.exit(1)
-
     os.makedirs(TEMP_VIDEOS_DIR, exist_ok=True)
     logger.info(f"Output directory: {TEMP_VIDEOS_DIR}")
 
     if args.single:
-        video = next((v for v in video_data['videos'] if v['id'] == args.single), None)
-        if not video:
-            logger.error(f"Video with ID {args.single} not found")
+        if not args.celebrity or not args.video_url:
+            logger.error("For --single mode, --celebrity and --video-url are required")
             sys.exit(1)
-        celebrity = video['celebrityName']
-        file_name = os.path.basename(video['videoUrl']).replace('.mp4', '') + '.mp4'
+        celebrity = args.celebrity
+        file_name = os.path.basename(args.video_url).replace('.mp4', '') + '.mp4'
         output_path = os.path.join(TEMP_VIDEOS_DIR, file_name)
-        custom_script = video.get('customScript')
+        custom_script = args.custom_script
         logger.info(f"Generating video for {celebrity} at {output_path}")
         create_video(celebrity, output_path, custom_script)
     else:
+        VIDEOS_JSON_URL = 'https://raw.githubusercontent.com/g-h-0-S-t/sports-reels-videos/main/videos.json'
+        # Fetch videos.json from GitHub
+        video_data = {'videos': []}
+        try:
+            response = requests.get(VIDEOS_JSON_URL, timeout=10)
+            response.raise_for_status()
+            video_data = response.json()
+            logger.info("Fetched videos.json from GitHub")
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 404:
+                logger.info("videos.json not found in repo, using empty array")
+            else:
+                logger.error(f"Failed to fetch videos.json: {e}")
+                sys.exit(1)
+        except Exception as e:
+            logger.error(f"Error fetching videos.json: {e}")
+            sys.exit(1)
+
         for video in video_data['videos']:
             celebrity = video['celebrityName']
             file_name = os.path.basename(video['videoUrl']).replace('.mp4', '') + '.mp4'
