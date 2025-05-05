@@ -39,21 +39,29 @@ export default function Home({ videos: initialVideos }) {
 
     const observer = new IntersectionObserver(
       (entries) => {
-        let mostVisibleVideo = null;
-        let maxIntersectionRatio = 0;
+        let mostCenteredVideo = null;
+        let minDistanceToCenter = Infinity;
+
+        const viewportHeight = window.innerHeight;
+        const viewportCenter = viewportHeight / 2;
 
         entries.forEach((entry) => {
           const video = entry.target;
           const index = videoRefs.current.indexOf(video);
-          if (index !== -1 && entry.intersectionRatio > maxIntersectionRatio) {
-            mostVisibleVideo = { video, index };
-            maxIntersectionRatio = entry.intersectionRatio;
+          if (index !== -1 && entry.isIntersecting) {
+            const rect = video.getBoundingClientRect();
+            const videoCenter = rect.top + rect.height / 2;
+            const distanceToCenter = Math.abs(viewportCenter - videoCenter);
+            if (distanceToCenter < minDistanceToCenter) {
+              mostCenteredVideo = { video, index };
+              minDistanceToCenter = distanceToCenter;
+            }
           }
         });
 
         videoRefs.current.forEach((video, idx) => {
           if (!video) return;
-          if (mostVisibleVideo && mostVisibleVideo.video === video && mostVisibleVideo.index === idx) {
+          if (mostCenteredVideo && mostCenteredVideo.video === video && mostCenteredVideo.index === idx) {
             video.play().catch((error) => {
               console.error('Autoplay failed:', error);
             });
@@ -270,6 +278,7 @@ export default function Home({ videos: initialVideos }) {
                 controls
                 loop
                 playsInline
+                muted
                 className="reel-video"
               />
               <div className="overlay">
