@@ -37,9 +37,9 @@ def check_dependencies():
             sys.exit(1)
 
 def fetch_images(query, count=5):
-    access_key = os.getenv('UNSPLASH_ACCESS_KEY')
+    access_key = os.environ.get('UNSPLASH_ACCESS_KEY')
     if not access_key:
-        logger.error("UNSPLASH_ACCESS_KEY not found in environment variables")
+        logger.error("UNSPLASH_ACCESS_KEY environment variable not set")
         sys.exit(1)
     url = f"https://api.unsplash.com/search/photos?query={query}&per_page={count}&client_id={access_key}&w=426&h=240"
     try:
