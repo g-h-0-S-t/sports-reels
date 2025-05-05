@@ -5,7 +5,7 @@ const util = require('util');
 const execPromise = util.promisify(exec);
 
 async function checkVideos() {
-  const videosJsonUrl = 'https://raw.githubusercontent.com/g-h-0-S-t/sports-reels-videos/main/videos.json';
+  const videosJsonUrl = 'https://raw.githubusercontent.com/g-h-0-S-t/sports-reels-videos/refs/heads/main/videos.json';
 
   try {
     // Fetch videos.json from GitHub

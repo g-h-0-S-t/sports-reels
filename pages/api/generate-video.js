@@ -1,183 +1,115 @@
-import { exec } from 'child_process';
-import fs from 'fs';
-import path from 'path';
-import fetch from 'node-fetch';
-import { promisify } from 'util';
-
-const execPromise = promisify(exec);
+import { execSync } from 'child_process';
+import { readFileSync, writeFileSync, rmSync, existsSync, readdirSync } from 'fs';
+import { join } from 'path';
+import { tmpdir } from 'os';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { celebrityName, title, description, customScript, videoUrl } = req.body;
+  const { celebrityName, title, description, customScript } = req.body;
 
-  if (!celebrityName || !title || !description || !customScript || !videoUrl) {
+  if (!celebrityName || !title || !description || !customScript) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
-  const tempVideosDir = process.env.NODE_ENV === 'production' ? '/tmp/videos' : path.join(process.cwd(), 'temp', 'videos');
-  const githubRepoUrl = 'https://github.com/g-h-0-S-t/sports-reels-videos.git';
-  const rawVideoUrl = `https://raw.githubusercontent.com/g-h-0-S-t/sports-reels-videos/main/videos/${path.basename(videoUrl)}`;
-  const videosJsonUrl = 'https://raw.githubusercontent.com/g-h-0-S-t/sports-reels-videos/main/videos.json';
+  const repoDir = join(tmpdir(), `sports-reels-videos-${Date.now()}`);
+  const githubToken = process.env.GITHUB_TOKEN;
+  const gitUrl = `https://${githubToken}@github.com/g-h-0-S-t/sports-reels-videos.git`;
 
   try {
-    // Clean temporary files (.mp3, .jpg, .mp4) before generation
-    if (fs.existsSync(tempVideosDir)) {
-      fs.readdirSync(tempVideosDir).forEach(file => {
-        const filePath = path.join(tempVideosDir, file);
-        try {
-          fs.unlinkSync(filePath);
-          console.log(`Deleted temporary file: ${filePath}`);
-        } catch (err) {
-          console.error(`Failed to delete ${filePath}: ${err.message}`);
-        }
-      });
-    } else {
-      fs.mkdirSync(tempVideosDir, { recursive: true });
-      console.log(`Created ${tempVideosDir}`);
+    console.log('[GenerateVideo] Starting video generation for:', celebrityName);
+    const videosJsonPath = join(repoDir, 'videos.json');
+    const videoFileName = `${celebrityName.toLowerCase().replace(/\s+/g, '-')}-history.mp4`;
+    const videoPath = join(repoDir, 'videos', videoFileName);
+    const videoUrl = `https://raw.githubusercontent.com/g-h-0-S-t/sports-reels-videos/main/videos/${videoFileName}`;
+    const pythonScriptPath = process.env.NODE_ENV === 'development'
+      ? '/Users/ribhubiswas/Desktop/data/experiments/sports-reels/generate_videos.py'
+      : '/app/generate_videos.py';
+
+    // Clone repo
+    console.log('[GenerateVideo] Cloning repo to:', repoDir);
+    try {
+      execSync(`git clone ${gitUrl} ${repoDir}`, { stdio: 'inherit' });
+      execSync(`cd ${repoDir} && git config user.email "generate@video.com" && git config user.name "Video Generator"`, { stdio: 'inherit' });
+    } catch (error) {
+      console.error('[GenerateVideo] Git clone error:', error.message);
+      throw new Error('Failed to clone repo');
     }
 
-    // Fetch videos.json from GitHub
+    // Generate video
+    console.log('[GenerateVideo] Running Python script:', pythonScriptPath);
+    const escapedScript = customScript.replace(/"/g, '\\"').replace(/\$/g, '\\$');
+    const command = `python3 ${pythonScriptPath} --celebrity "${celebrityName}" --title "${title}" --description "${description}" --script "${escapedScript}"`;
+    try {
+      const output = execSync(command, { stdio: 'pipe', encoding: 'utf8', cwd: repoDir });
+      console.log('[GenerateVideo] Python script output:', output);
+    } catch (error) {
+      console.error('[GenerateVideo] Python script error:', error.message);
+      console.error('[GenerateVideo] Python stderr:', error.stderr);
+      throw new Error(`Python script failed: ${error.stderr || error.message}`);
+    }
+
+    // Verify video file
+    if (!existsSync(videoPath)) {
+      console.error('[GenerateVideo] Video file not found:', videoPath);
+      console.error('[GenerateVideo] Videos directory contents:', readdirSync(join(repoDir, 'videos')));
+      throw new Error('Video file was not generated');
+    }
+    console.log('[GenerateVideo] Video file verified:', videoPath);
+
+    // Update videos.json
+    console.log('[GenerateVideo] Updating videos.json');
     let videosData = { videos: [] };
     try {
-      const response = await fetch(videosJsonUrl);
-      if (response.ok) {
-        videosData = await response.json();
-        console.log('Fetched videos.json from GitHub');
-      } else if (response.status === 404) {
-        console.log('videos.json not found in repo, using empty array');
-      } else {
-        throw new Error(`Failed to fetch videos.json: ${response.status}`);
-      }
+      videosData = JSON.parse(readFileSync(videosJsonPath, 'utf-8'));
     } catch (error) {
-      console.error(`Error fetching videos.json: ${error.message}`);
-      // Proceed with empty array if fetch fails
-    }
-
-    // Check for existing video with same videoUrl
-    let videoId;
-    const existingVideoIndex = videosData.videos.findIndex(v => v.videoUrl === rawVideoUrl);
-    if (existingVideoIndex !== -1) {
-      videoId = videosData.videos[existingVideoIndex].id;
-      console.log(`Re-generating existing video with ID ${videoId} for ${rawVideoUrl}`);
-      videosData.videos[existingVideoIndex] = {
-        id: videoId,
-        celebrityName,
-        title,
-        description,
-        customScript,
-        videoUrl: rawVideoUrl
-      };
-    } else {
-      videoId = Date.now().toString();
-      console.log(`Generating new video with ID ${videoId} for ${rawVideoUrl}`);
-      videosData.videos.push({
-        id: videoId,
-        celebrityName,
-        title,
-        description,
-        customScript,
-        videoUrl: rawVideoUrl
-      });
+      console.error('[GenerateVideo] Error reading videos.json, initializing new:', error.message);
     }
 
     const newVideo = {
-      id: videoId,
+      id: videosData.videos.length + 1,
       celebrityName,
       title,
       description,
-      customScript,
-      videoUrl: rawVideoUrl
+      videoUrl
     };
 
-    // Run generate_videos.py
-    const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
-    const scriptPath = path.join(process.cwd(), 'generate_videos.py');
-    const logPath = path.join(process.cwd(), 'generate_videos.log');
-    const escapedCustomScript = customScript.replace(/"/g, '\\"');
-    const command = `${pythonCommand} "${scriptPath}" --single ${videoId} --celebrity "${celebrityName}" --video-url "${rawVideoUrl}" --custom-script "${escapedCustomScript}" > "${logPath}" 2>&1`;
-    console.log(`Executing: ${command}`);
+    videosData.videos = videosData.videos.filter(v => v.videoUrl !== videoUrl);
+    videosData.videos.push(newVideo);
 
+    writeFileSync(videosJsonPath, JSON.stringify(videosData, null, 2));
+    console.log('[GenerateVideo] Updated videos.json:', videosData.videos);
+
+    // Commit and push changes
+    console.log('[GenerateVideo] Committing and pushing changes');
     try {
-      await execPromise(command);
-      const videoFilePath = path.join(tempVideosDir, path.basename(videoUrl));
-      if (!fs.existsSync(videoFilePath)) {
-        const logContent = fs.existsSync(logPath) ? fs.readFileSync(logPath, 'utf8') : 'Log file missing';
-        console.error(`Video file not found: ${videoFilePath}`);
-        console.error(`generate_videos.py log: ${logContent}`);
-        throw new Error(`Video file not generated: ${logContent}`);
-      }
-      console.log('Video generation completed');
-
-      // Push to GitHub
-      const githubToken = process.env.GITHUB_TOKEN;
-      if (!githubToken) {
-        throw new Error('GITHUB_TOKEN not set');
-      }
-      const repoDir = '/tmp/repo-sports-reels-videos';
-      if (fs.existsSync(repoDir)) {
-        try {
-          fs.rmSync(repoDir, { recursive: true, force: true });
-          console.log(`Deleted existing repo: ${repoDir}`);
-        } catch (err) {
-          console.error(`Failed to delete ${repoDir}: ${err.message}`);
-        }
-      }
-      fs.mkdirSync(repoDir, { recursive: true });
-      await execPromise(`git clone https://${githubToken}@github.com/g-h-0-S-t/sports-reels-videos.git ${repoDir}`);
-      
-      // Copy video
-      const videoDestPath = path.join(repoDir, 'videos', path.basename(videoUrl));
-      fs.copyFileSync(videoFilePath, videoDestPath);
-      
-      // Write videos.json
-      const videosJsonPath = path.join(repoDir, 'videos.json');
-      fs.writeFileSync(videosJsonPath, JSON.stringify(videosData, null, 2));
-      console.log(`Wrote videos.json to ${videosJsonPath}`);
-
-      // Commit and push
-      await execPromise(`cd ${repoDir} && git add videos/${path.basename(videoUrl)} videos.json`);
-      await execPromise(`cd ${repoDir} && git config user.email "6196046+g-h-0-S-t@users.noreply.github.com"`);
-      await execPromise(`cd ${repoDir} && git config user.name "g-h-0-S-t"`);
-      await execPromise(`cd ${repoDir} && git commit -m "Add or update video ${path.basename(videoUrl)} and videos.json"`);
-      await execPromise(`cd ${repoDir} && git push origin main`);
-      console.log(`Pushed ${path.basename(videoUrl)} and videos.json to GitHub`);
-
-      // Clean up temporary files after successful push
-      console.log('Starting cleanup of temporary files');
-      try {
-        if (fs.existsSync(videoFilePath)) {
-          fs.unlinkSync(videoFilePath);
-          console.log(`Deleted temporary video: ${videoFilePath}`);
-        } else {
-          console.warn(`Video file not found for cleanup: ${videoFilePath}`);
-        }
-        if (fs.existsSync(tempVideosDir) && fs.readdirSync(tempVideosDir).length === 0) {
-          fs.rmdirSync(tempVideosDir);
-          console.log(`Deleted empty temp directory: ${tempVideosDir}`);
-        }
-        if (fs.existsSync(repoDir)) {
-          fs.rmSync(repoDir, { recursive: true, force: true });
-          console.log(`Deleted temporary repo: ${repoDir}`);
-        } else {
-          console.warn(`Repo directory not found for cleanup: ${repoDir}`);
-        }
-      } catch (cleanupError) {
-        console.error(`Failed to clean up temporary files: ${cleanupError.message}`);
-      }
-      console.log('Cleanup completed');
-
-      res.status(200).json(newVideo);
+      // Ensure remote URL includes PAT
+      execSync(`cd ${repoDir} && git remote set-url origin ${gitUrl}`, { stdio: 'inherit' });
+      console.log('[GenerateVideo] Remote URL set:', gitUrl.replace(githubToken, '****'));
+      // Cache PAT in credential helper
+      execSync(`cd ${repoDir} && printf "protocol=https\nhost=github.com\nusername=git\npassword=${githubToken}\n" | git credential-osxkeychain store`, { stdio: 'inherit' });
+      console.log('[GenerateVideo] PAT cached in credential helper');
+      execSync(`cd ${repoDir} && git add videos.json videos/${videoFileName} && git commit -m "Add video for ${celebrityName}" && git push origin main`, { stdio: 'inherit' });
+      console.log('[GenerateVideo] Push successful');
     } catch (error) {
-      const logContent = fs.existsSync(logPath) ? fs.readFileSync(logPath, 'utf8') : 'Log file missing';
-      console.error(`Video generation or push failed: ${error.message}`);
-      console.error(`generate_videos.py log: ${logContent}`);
-      res.status(500).json({ error: `Failed: ${error.message}, Log: ${logContent}` });
+      console.error('[GenerateVideo] Git commit/push error:', error.message);
+      throw new Error('Failed to push video and videos.json to repo');
     }
+
+    console.log('[GenerateVideo] Video generated and pushed:', videoUrl);
+    return res.status(200).json({ videoUrl, videos: videosData.videos });
   } catch (error) {
-    console.error('Error in generate-video API:', error.message);
-    res.status(500).json({ error: `Failed to initiate video generation: ${error.message}` });
+    console.error('[GenerateVideo] Error:', error.message);
+    return res.status(500).json({ error: error.message });
+  } finally {
+    // Clean up
+    try {
+      console.log('[GenerateVideo] Deleting temp repo:', repoDir);
+      rmSync(repoDir, { recursive: true, force: true });
+    } catch (error) {
+      console.error('[GenerateVideo] Cleanup error:', error.message);
+    }
   }
 }

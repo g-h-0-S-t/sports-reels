@@ -2,19 +2,26 @@ services:
   - type: web
     name: sports-reels
     env: node
-    plan: free
+    repo: https://github.com/g-h-0-S-t/sports-reels
     buildCommand: |
-      apt-get update
-      apt-get install -y python3 python3-pip ffmpeg git
-      pip3 install -r requirements.txt
       npm install
+      pip3 install -r requirements.txt
       npm run build
-    startCommand: npm start
+    startCommand: npm run start
     envVars:
-      - key: NODE_VERSION
-        value: 18
-      - key: PYTHON_VERSION
-        value: 3.9
+      - key: NODE_ENV
+        fromService:
+          name: sports-reels
+          type: secret
+      - key: NEXT_PUBLIC_APP_URL
+        fromService:
+          name: sports-reels
+          type: secret
       - key: GITHUB_TOKEN
-        sync: false
-    autoDeploy: true
+        fromService:
+          name: sports-reels
+          type: secret
+      - key: UNSPLASH_ACCESS_KEY
+        fromService:
+          name: sports-reels
+          type: secret

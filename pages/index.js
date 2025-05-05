@@ -1,15 +1,34 @@
 import { useEffect, useRef, useState } from 'react';
 import fetch from 'node-fetch';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 
 export async function getStaticProps() {
-  const videosJsonUrl = `https://raw.githubusercontent.com/g-h-0-S-t/sports-reels-videos/main/videos.json?t=${Date.now()}&cache_bust=${Math.random()}`;
-  const proxyUrl = `http://localhost:3000/api/proxy-json?url=${encodeURIComponent(videosJsonUrl)}`;
-  const maxRetries = 3;
-  const retryDelay = 2000;
+  const repoPath = process.env.NODE_ENV === 'development'
+    ? '/Users/ribhubiswas/Desktop/data/experiments/sports-reels-videos'
+    : '/app/sports-reels-videos';
+  const videosJsonPath = join(repoPath, 'videos.json');
 
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+  try {
+    console.log(`[getStaticProps] Reading local videos.json: ${videosJsonPath}`);
+    const videosData = JSON.parse(readFileSync(videosJsonPath, 'utf-8'));
+    console.log(`[getStaticProps] Fetched videos.json:`, videosData.videos);
+    return { 
+      props: { videos: videosData.videos || [] },
+      revalidate: 60
+    };
+  } catch (error) {
+    console.error(`[getStaticProps] Error reading local videos.json: ${error.message}`);
+    // Fallback to GitHub API
+    const videosJsonUrl = `https://api.github.com/repos/g-h-0-S-t/sports-reels-videos/contents/videos.json?ref=main&t=${Date.now()}`;
+    const proxyUrl = new URL('/api/proxy-json', process.env.NODE_ENV === 'development' 
+      ? 'http://localhost:3000' 
+      : process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000');
+    proxyUrl.searchParams.append('url', videosJsonUrl);
+    proxyUrl.searchParams.append('token', process.env.GITHUB_TOKEN);
+
     try {
-      console.log(`[getStaticProps] Fetching videos.json via proxy, attempt ${attempt}/${maxRetries}: ${proxyUrl}`);
+      console.log(`[getStaticProps] Fetching videos.json via proxy: ${proxyUrl}`);
       const response = await fetch(proxyUrl, {
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -17,20 +36,22 @@ export async function getStaticProps() {
           'Expires': '0'
         }
       });
-      console.log(`[getStaticProps] Status: ${response.status}, Headers:`, Object.fromEntries(response.headers));
       if (!response.ok) {
         throw new Error(`Failed to fetch videos.json: ${response.status}`);
       }
-      const videosData = await response.json();
-      console.log(`[getStaticProps] Fetched videos.json:`, videosData.videos);
-      return { props: { videos: videosData.videos || [] } };
-    } catch (error) {
-      console.error(`[getStaticProps] Error attempt ${attempt}/${maxRetries}: ${error.message}`);
-      if (attempt === maxRetries) {
-        console.error('[getStaticProps] Max retries reached, returning empty videos');
-        return { props: { videos: [] } };
-      }
-      await new Promise(resolve => setTimeout(resolve, retryDelay));
+      const data = await response.json();
+      const videosData = JSON.parse(Buffer.from(data.content, 'base64').toString('utf-8'));
+      console.log(`[getStaticProps] Fetched videos.json from GitHub:`, videosData.videos);
+      return { 
+        props: { videos: videosData.videos || [] },
+        revalidate: 60
+      };
+    } catch (fallbackError) {
+      console.error(`[getStaticProps] Fallback error: ${fallbackError.message}`);
+      return { 
+        props: { videos: [] },
+        revalidate: 60
+      };
     }
   }
 }
@@ -51,8 +72,8 @@ export default function Home({ videos: initialVideos }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState(null);
   const [isFormActive, setIsFormActive] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   const videoRefs = useRef([]);
-  const hasUserInteracted = useRef(false);
 
   useEffect(() => {
     if (!isStarted || displayedVideos.length === 0 || isFormActive) return;
@@ -106,25 +127,33 @@ export default function Home({ videos: initialVideos }) {
     console.log('[State Update] Videos:', videos);
     console.log('[State Update] Displayed videos:', displayedVideos);
     console.log('[State Update] Current video index:', currentVideo);
-    console.log('[State Update] Has user interacted:', hasUserInteracted.current);
+    console.log('[State Update] Has user interacted:', videoRefs.current.length);
     console.log('[State Update] Is form active:', isFormActive);
     console.log('[State Update] Is generating:', isGenerating);
-  }, [videos, displayedVideos, currentVideo, isFormActive, isGenerating]);
+    console.log('[State Update] Refresh key:', refreshKey);
+  }, [videos, displayedVideos, currentVideo, isFormActive, isGenerating, refreshKey]);
+
+  useEffect(() => {
+    console.log('[Videos State] Updated:', videos.length, 'videos');
+    console.log('[Videos State] First video:', videos[0]);
+    console.log('[Videos State] Displayed videos:', displayedVideos.length);
+    videoRefs.current = Array(displayedVideos.length).fill(null);
+  }, [videos, displayedVideos]);
 
   const handleSearch = (e) => {
     const query = e.target.value.toLowerCase();
     setSearchQuery(query);
-    videoRefs.current = Array(displayedVideos.length).fill(null);
-    let filtered = videos;
     if (query.trim() === '') {
-      setDisplayedVideos(videos);
+      setDisplayedVideos([...videos]);
     } else {
-      filtered = videos.filter((video) =>
-        video.celebrityName.toLowerCase().includes(query)
+      const filtered = videos.filter((video) =>
+        video.celebrityName.toLowerCase().includes(query) ||
+        video.title.toLowerCase().includes(query) ||
+        video.description.toLowerCase().includes(query)
       );
-      setDisplayedVideos(filtered);
+      setDisplayedVideos([...filtered]);
+      console.log('[Search] Query:', query, 'Filtered videos:', filtered);
     }
-    console.log('[Search] Query:', query, 'Filtered videos:', filtered);
   };
 
   const handleInputChange = (e) => {
@@ -147,7 +176,7 @@ export default function Home({ videos: initialVideos }) {
     setIsFormActive(false);
   };
 
-  const pollVideo = async (videoUrl, maxAttempts = 10, interval = 3000) => {
+  const pollVideo = async (videoUrl, maxAttempts = 15, interval = 5000) => {
     console.log(`[Poll] Starting polling: ${videoUrl}`);
     for (let i = 0; i < maxAttempts; i++) {
       try {
@@ -171,7 +200,6 @@ export default function Home({ videos: initialVideos }) {
         }
       } catch (err) {
         console.error(`[Poll] Error attempt ${i + 1}/${maxAttempts}: ${err.message}`);
-        throw err;
       }
       await new Promise(resolve => setTimeout(resolve, interval));
     }
@@ -186,7 +214,6 @@ export default function Home({ videos: initialVideos }) {
         const controller = new AbortController();
         const id = setTimeout(() => controller.abort(), timeout);
         try {
-          // Ensure URL is absolute for server-side calls
           const absoluteUrl = url.startsWith('/') 
             ? `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}${url}`
             : url;
@@ -214,38 +241,30 @@ export default function Home({ videos: initialVideos }) {
   };
 
   const refreshVideos = async () => {
-    const videosJsonUrl = `https://raw.githubusercontent.com/g-h-0-S-t/sports-reels-videos/main/videos.json?t=${Date.now()}&cache_bust=${Math.random()}`;
-    const proxyUrl = `/api/proxy-json?url=${encodeURIComponent(videosJsonUrl)}`;
-    const maxRetries = 3;
-    const retryDelay = 2000;
-
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        console.log(`[Refresh] Fetching videos.json via proxy, attempt ${attempt}/${maxRetries}: ${proxyUrl}`);
-        const response = await fetchWithTimeout(proxyUrl, {
-          headers: {
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-            'Expires': '0'
-          }
-        }, 30000);
-        console.log(`[Refresh] Status: ${response.status}, Headers:`, Object.fromEntries(response.headers));
-        if (response.ok) {
-          const videosData = await response.json();
-          console.log(`[Refresh] Refreshed videos.json:`, videosData.videos);
-          setVideos(videosData.videos || []);
-          setDisplayedVideos(videosData.videos || []);
-          return;
-        } else {
-          throw new Error(`Failed to refresh videos.json: ${response.status}`);
+    try {
+      console.log('[Refresh] Fetching videos via /api/refresh-videos');
+      const response = await fetchWithTimeout('/api/refresh-videos', {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
         }
-      } catch (error) {
-        console.error(`[Refresh] Error attempt ${attempt}/${maxRetries}: ${error.message}`);
-        if (attempt === maxRetries) {
-          throw new Error(`Max retries reached for videos.json: ${error.message}`);
-        }
-        await new Promise(resolve => setTimeout(resolve, retryDelay));
+      }, 30000);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to refresh videos: ${response.status}`);
       }
+
+      const { videos: newVideos } = await response.json();
+      console.log('[Refresh] Refreshed videos:', newVideos);
+      
+      setVideos([...newVideos]);
+      setDisplayedVideos([...newVideos]);
+      setRefreshKey(prev => prev + 1);
+      console.log('[Refresh] Updated videos and displayedVideos:', newVideos);
+    } catch (error) {
+      console.error(`[Refresh] Error: ${error.message}`);
+      setError(`Failed to refresh videos: ${error.message}`);
     }
   };
 
@@ -254,7 +273,6 @@ export default function Home({ videos: initialVideos }) {
     setError(null);
     setIsGenerating(true);
     setIsFormActive(false);
-    hasUserInteracted.current = true;
 
     try {
       console.log('[Submit] Submitting form:', formData);
@@ -270,32 +288,33 @@ export default function Home({ videos: initialVideos }) {
         throw new Error(errorData.error || 'Failed to initiate video generation');
       }
 
-      const newVideo = await response.json();
-      console.log('[Submit] API response:', newVideo);
-      console.log('[Submit] New video URL:', newVideo.videoUrl);
+      const { videoUrl, videos: newVideos } = await response.json();
+      console.log('[Submit] API response:', { videoUrl, videos: newVideos });
+      
       try {
-        await pollVideo(newVideo.videoUrl);
+        await pollVideo(videoUrl);
+        console.log('[Submit] Video polling successful');
+        setVideos([...newVideos]);
+        setDisplayedVideos([...newVideos]);
+        setRefreshKey(prev => prev + 1);
+        setFormData({
+          celebrityName: '',
+          title: '',
+          description: '',
+          customScript: '',
+          videoUrl: ''
+        });
+        setSearchQuery('');
+        console.log('[Submit] Form and search reset, videos updated:', newVideos);
       } catch (pollError) {
         console.error('[Submit] Poll error:', pollError.message);
-        throw pollError;
+        throw new Error(`Video polling failed: ${pollError.message}`);
       }
-      try {
-        await refreshVideos();
-      } catch (refreshError) {
-        console.error('[Submit] Refresh error:', refreshError.message);
-        throw refreshError;
-      }
-      setFormData({
-        celebrityName: '',
-        title: '',
-        description: '',
-        customScript: '',
-        videoUrl: ''
-      });
-      console.log('[Submit] Form reset, video processed:', newVideo);
     } catch (err) {
       console.error('[Submit] Error:', err.message);
-      setError(err.message === 'signal is aborted without reason' ? 'Request timed out, but video may still be generating' : err.message);
+      setError(err.message === 'signal is aborted without reason' 
+        ? 'Request timed out, but video may still be generating' 
+        : `Failed to generate video: ${err.message}. Check server logs for details.`);
     } finally {
       console.log('[Submit] Resetting isGenerating');
       setIsGenerating(false);
@@ -308,6 +327,14 @@ export default function Home({ videos: initialVideos }) {
 
   return (
     <div className="reel-container">
+      {isGenerating && (
+        <div className="loader-overlay">
+          <div className="loader">
+            <div className="golf-ball"></div>
+            <p>Generating your sports reel...</p>
+          </div>
+        </div>
+      )}
       {!isStarted ? (
         <div className="start-screen">
           <h1>Welcome to Sports Reels!</h1>
@@ -383,33 +410,92 @@ export default function Home({ videos: initialVideos }) {
               <button type="submit" disabled={isGenerating}>
                 {isGenerating ? 'Generating...' : 'Generate/Re-generate Reel'}
               </button>
+              <button type="button" onClick={refreshVideos} disabled={isGenerating}>
+                Refresh Videos
+              </button>
               {error && <p className="error">{error}</p>}
             </form>
           </div>
+          {videos.length === 0 && !searchQuery && (
+            <p className="no-videos">No videos available. Try generating a new reel!</p>
+          )}
           {displayedVideos.length === 0 && searchQuery && (
             <p className="no-results">No videos found for "{searchQuery}"</p>
           )}
-          {displayedVideos.map((video, index) => (
-            <div key={`${video.id}-${Date.now()}`} className="reel-item">
-              <video
-                ref={(el) => (videoRefs.current[index] = el)}
-                src={`/api/proxy-video?url=${encodeURIComponent(video.videoUrl)}&t=${Date.now()}`}
-                className="reel-video"
-                loop
-                controls
-                playsInline
-                preload="auto"
-                defaultMuted={false}
-                onError={(e) => console.error(`[Video] Error loading ${video.videoUrl}:`, e)}
-              />
-              <div className="overlay">
-                <h2>{video.title}</h2>
-                <p>{video.description}</p>
+          <div className="reels-container">
+            {displayedVideos.map((video, index) => (
+              <div key={`${video.id}-${refreshKey}`} className="reel-item">
+                <video
+                  ref={(el) => (videoRefs.current[index] = el)}
+                  src={`/api/proxy-video?url=${encodeURIComponent(video.videoUrl)}&t=${Date.now()}`}
+                  className="reel-video"
+                  loop
+                  controls
+                  playsInline
+                  preload="auto"
+                  defaultMuted={false}
+                  onError={(e) => console.error(`[Video] Error loading ${video.videoUrl}:`, e)}
+                />
+                <div className="overlay">
+                  <h2>{video.title}</h2>
+                  <p>{video.description}</p>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </>
       )}
+      <style jsx>{`
+        .loader-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: rgba(0, 0, 0, 0.7);
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          z-index: 1000;
+        }
+        .loader {
+          text-align: center;
+          color: #fff;
+        }
+        .golf-ball {
+          width: 50px;
+          height: 50px;
+          background: radial-gradient(circle, #fff, #e0e0e0);
+          border-radius: 50%;
+          position: relative;
+          animation: spin 1s linear infinite;
+          margin: 0 auto 10px;
+        }
+        .golf-ball::before {
+          content: '';
+          position: absolute;
+          top: 10px;
+          left: 10px;
+          width: 5px;
+          height: 5px;
+          background: #888;
+          border-radius: 50%;
+          box-shadow: 
+            15px 0 0 #888,
+            0 15px 0 #888,
+            15px 15px 0 #888,
+            10px 5px 0 #888,
+            5px 10px 0 #888;
+        }
+        .loader p {
+          font-size: 1.2em;
+          font-weight: bold;
+        }
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }
