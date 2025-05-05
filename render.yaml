@@ -5,7 +5,7 @@ services:
     plan: free
     buildCommand: |
       apt-get update
-      apt-get install -y python3 python3-pip ffmpeg
+      apt-get install -y python3 python3-pip ffmpeg git
       pip3 install -r requirements.txt
       npm install
       npm run build
@@ -15,4 +15,6 @@ services:
         value: 18
       - key: PYTHON_VERSION
         value: 3.9
+      - key: GITHUB_TOKEN
+        sync: false
     autoDeploy: true
