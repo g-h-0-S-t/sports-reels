@@ -26,8 +26,13 @@ export default async function handler(req, res) {
     // Clean temporary files (.mp3, .jpg, .mp4) before generation
     if (fs.existsSync(tempVideosDir)) {
       fs.readdirSync(tempVideosDir).forEach(file => {
-        fs.unlinkSync(path.join(tempVideosDir, file));
-        console.log(`Deleted temporary file: ${file}`);
+        const filePath = path.join(tempVideosDir, file);
+        try {
+          fs.unlinkSync(filePath);
+          console.log(`Deleted temporary file: ${filePath}`);
+        } catch (err) {
+          console.error(`Failed to delete ${filePath}: ${err.message}`);
+        }
       });
     } else {
       fs.mkdirSync(tempVideosDir, { recursive: true });
@@ -55,7 +60,6 @@ export default async function handler(req, res) {
     let videoId;
     const existingVideoIndex = videosData.videos.findIndex(v => v.videoUrl === rawVideoUrl);
     if (existingVideoIndex !== -1) {
-      // Reuse existing ID and update entry
       videoId = videosData.videos[existingVideoIndex].id;
       console.log(`Re-generating existing video with ID ${videoId} for ${rawVideoUrl}`);
       videosData.videos[existingVideoIndex] = {
@@ -67,7 +71,6 @@ export default async function handler(req, res) {
         videoUrl: rawVideoUrl
       };
     } else {
-      // Create new ID and add entry
       videoId = Date.now().toString();
       console.log(`Generating new video with ID ${videoId} for ${rawVideoUrl}`);
       videosData.videos.push({
@@ -93,7 +96,6 @@ export default async function handler(req, res) {
     const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
     const scriptPath = path.join(process.cwd(), 'generate_videos.py');
     const logPath = path.join(process.cwd(), 'generate_videos.log');
-    // Escape customScript to handle quotes and spaces
     const escapedCustomScript = customScript.replace(/"/g, '\\"');
     const command = `${pythonCommand} "${scriptPath}" --single ${videoId} --celebrity "${celebrityName}" --video-url "${rawVideoUrl}" --custom-script "${escapedCustomScript}" > "${logPath}" 2>&1`;
     console.log(`Executing: ${command}`);
@@ -116,7 +118,12 @@ export default async function handler(req, res) {
       }
       const repoDir = '/tmp/repo-sports-reels-videos';
       if (fs.existsSync(repoDir)) {
-        fs.rmSync(repoDir, { recursive: true, force: true });
+        try {
+          fs.rmSync(repoDir, { recursive: true, force: true });
+          console.log(`Deleted existing repo: ${repoDir}`);
+        } catch (err) {
+          console.error(`Failed to delete ${repoDir}: ${err.message}`);
+        }
       }
       fs.mkdirSync(repoDir, { recursive: true });
       await execPromise(`git clone https://${githubToken}@github.com/g-h-0-S-t/sports-reels-videos.git ${repoDir}`);
@@ -139,19 +146,28 @@ export default async function handler(req, res) {
       console.log(`Pushed ${path.basename(videoUrl)} and videos.json to GitHub`);
 
       // Clean up temporary files after successful push
+      console.log('Starting cleanup of temporary files');
       try {
         if (fs.existsSync(videoFilePath)) {
           fs.unlinkSync(videoFilePath);
           console.log(`Deleted temporary video: ${videoFilePath}`);
+        } else {
+          console.warn(`Video file not found for cleanup: ${videoFilePath}`);
+        }
+        if (fs.existsSync(tempVideosDir) && fs.readdirSync(tempVideosDir).length === 0) {
+          fs.rmdirSync(tempVideosDir);
+          console.log(`Deleted empty temp directory: ${tempVideosDir}`);
         }
         if (fs.existsSync(repoDir)) {
           fs.rmSync(repoDir, { recursive: true, force: true });
           console.log(`Deleted temporary repo: ${repoDir}`);
+        } else {
+          console.warn(`Repo directory not found for cleanup: ${repoDir}`);
         }
       } catch (cleanupError) {
         console.error(`Failed to clean up temporary files: ${cleanupError.message}`);
-        // Don't fail the request due to cleanup error
       }
+      console.log('Cleanup completed');
 
       res.status(200).json(newVideo);
     } catch (error) {
