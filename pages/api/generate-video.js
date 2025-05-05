@@ -83,6 +83,8 @@ export default async function handler(req, res) {
       const videoDestPath = path.join(repoDir, 'videos', path.basename(videoUrl));
       fs.copyFileSync(videoFilePath, videoDestPath);
       await execPromise(`cd ${repoDir} && git add videos/${path.basename(videoUrl)}`);
+      await execPromise(`cd ${repoDir} && git config user.email "6196046+g-h-0-S-t@users.noreply.github.com"`);
+      await execPromise(`cd ${repoDir} && git config user.name "g-h-0-S-t"`);
       await execPromise(`cd ${repoDir} && git commit -m "Add video ${path.basename(videoUrl)}"`);
       await execPromise(`cd ${repoDir} && git push origin main`);
       console.log(`Pushed ${path.basename(videoUrl)} to GitHub`);
