@@ -17,30 +17,29 @@ export default async function handler(req, res) {
   }
 
   const videoId = Date.now().toString();
-  const videosDir = path.join(process.cwd(), 'public', 'videos');
+  const tempVideosDir = process.env.NODE_ENV === 'production' ? '/tmp/videos' : path.join(process.cwd(), 'temp', 'videos');
   const videosJsonPath = path.join(process.cwd(), 'data', 'videos.json');
+  const githubRepoUrl = 'https://github.com/g-h-0-S-t/sports-reels-videos.git';
+  const rawVideoUrl = `https://raw.githubusercontent.com/g-h-0-S-t/sports-reels-videos/main/videos/${path.basename(videoUrl)}`;
   const newVideo = {
     id: videoId,
     celebrityName,
     title,
     description,
     customScript,
-    videoUrl: `/videos/${path.basename(videoUrl)}`
+    videoUrl: rawVideoUrl
   };
 
   try {
-    // Clean only temporary files (.mp3, .jpg), preserve .mp4
-    if (fs.existsSync(videosDir)) {
-      fs.readdirSync(videosDir).forEach(file => {
-        if (file.endsWith('.mp3') || file.endsWith('.jpg')) {
-          fs.unlinkSync(path.join(videosDir, file));
-          console.log(`Deleted temporary file: ${file}`);
-        }
+    // Clean temporary files (.mp3, .jpg, .mp4)
+    if (fs.existsSync(tempVideosDir)) {
+      fs.readdirSync(tempVideosDir).forEach(file => {
+        fs.unlinkSync(path.join(tempVideosDir, file));
+        console.log(`Deleted temporary file: ${file}`);
       });
-      console.log(`Cleaned temporary files in ${videosDir}`);
     } else {
-      fs.mkdirSync(videosDir, { recursive: true });
-      console.log(`Created ${videosDir}`);
+      fs.mkdirSync(tempVideosDir, { recursive: true });
+      console.log(`Created ${tempVideosDir}`);
     }
 
     // Write to videos.json
@@ -61,8 +60,7 @@ export default async function handler(req, res) {
 
     try {
       await execPromise(command);
-      // Check if .mp4 exists
-      const videoFilePath = path.join(videosDir, path.basename(videoUrl));
+      const videoFilePath = path.join(tempVideosDir, path.basename(videoUrl));
       if (!fs.existsSync(videoFilePath)) {
         const logContent = fs.existsSync(logPath) ? fs.readFileSync(logPath, 'utf8') : 'Log file missing';
         console.error(`Video file not found: ${videoFilePath}`);
@@ -70,12 +68,31 @@ export default async function handler(req, res) {
         throw new Error(`Video file not generated: ${logContent}`);
       }
       console.log('Video generation completed');
+
+      // Push to GitHub
+      const githubToken = process.env.GITHUB_TOKEN;
+      if (!githubToken) {
+        throw new Error('GITHUB_TOKEN not set');
+      }
+      const repoDir = '/tmp/repo-sports-reels-videos';
+      if (fs.existsSync(repoDir)) {
+        fs.rmSync(repoDir, { recursive: true, force: true });
+      }
+      fs.mkdirSync(repoDir, { recursive: true });
+      await execPromise(`git clone https://${githubToken}@github.com/g-h-0-S-t/sports-reels-videos.git ${repoDir}`);
+      const videoDestPath = path.join(repoDir, 'videos', path.basename(videoUrl));
+      fs.copyFileSync(videoFilePath, videoDestPath);
+      await execPromise(`cd ${repoDir} && git add videos/${path.basename(videoUrl)}`);
+      await execPromise(`cd ${repoDir} && git commit -m "Add video ${path.basename(videoUrl)}"`);
+      await execPromise(`cd ${repoDir} && git push origin main`);
+      console.log(`Pushed ${path.basename(videoUrl)} to GitHub`);
+
       res.status(200).json(newVideo);
     } catch (error) {
       const logContent = fs.existsSync(logPath) ? fs.readFileSync(logPath, 'utf8') : 'Log file missing';
-      console.error(`Video generation failed: ${error.message}`);
+      console.error(`Video generation or push failed: ${error.message}`);
       console.error(`generate_videos.py log: ${logContent}`);
-      res.status(500).json({ error: `Video generation failed: ${error.message}, Log: ${logContent}` });
+      res.status(500).json({ error: `Failed: ${error.message}, Log: ${logContent}` });
     }
   } catch (error) {
     console.error('Error in generate-video API:', error.message);
