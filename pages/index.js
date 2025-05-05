@@ -51,6 +51,7 @@ export default function Home({ videos: initialVideos }) {
   });
   const [searchQuery, setSearchQuery] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [isFormActive, setIsFormActive] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -110,8 +111,9 @@ export default function Home({ videos: initialVideos }) {
     console.log('[State Update] Current video index:', currentVideo);
     console.log('[State Update] Is form active:', isFormActive);
     console.log('[State Update] Is generating:', isGenerating);
+    console.log('[State Update] Is refreshing:', isRefreshing);
     console.log('[State Update] Refresh key:', refreshKey);
-  }, [videos, displayedVideos, currentVideo, isFormActive, isGenerating, refreshKey]);
+  }, [videos, displayedVideos, currentVideo, isFormActive, isGenerating, isRefreshing, refreshKey]);
 
   useEffect(() => {
     console.log('[Videos State] Updated:', videos.length, 'videos');
@@ -119,6 +121,12 @@ export default function Home({ videos: initialVideos }) {
     console.log('[Videos State] Displayed videos:', displayedVideos.length);
     videoRefs.current = Array(displayedVideos.length).fill(null);
   }, [videos, displayedVideos]);
+
+  useEffect(() => {
+    if (isStarted && !isRefreshing) {
+      refreshVideos();
+    }
+  }, [isStarted]);
 
   const handleSearch = (e) => {
     const query = e.target.value.toLowerCase();
@@ -218,6 +226,7 @@ export default function Home({ videos: initialVideos }) {
   };
 
   const refreshVideos = async () => {
+    setIsRefreshing(true);
     try {
       console.log('[Refresh] Fetching videos via /api/refresh-videos');
       const response = await fetchWithTimeout('/api/refresh-videos', {
@@ -242,6 +251,8 @@ export default function Home({ videos: initialVideos }) {
     } catch (error) {
       console.error(`[Refresh] Error: ${error.message}`);
       setError(`Failed to refresh videos: ${error.message}`);
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -304,11 +315,11 @@ export default function Home({ videos: initialVideos }) {
 
   return (
     <div className="reel-container">
-      {isGenerating && (
+      {(isGenerating || isRefreshing) && (
         <div className="loader-overlay">
           <div className="loader">
             <div className="golf-ball"></div>
-            <p>Generating your sports reel...</p>
+            <p>{isGenerating ? 'Generating your sports reel...' : 'Refreshing videos...'}</p>
           </div>
         </div>
       )}
@@ -384,10 +395,10 @@ export default function Home({ videos: initialVideos }) {
                   readOnly
                 />
               </label>
-              <button type="submit" disabled={isGenerating}>
+              <button type="submit" disabled={isGenerating || isRefreshing}>
                 {isGenerating ? 'Generating...' : 'Generate/Re-generate Reel'}
               </button>
-              <button type="button" onClick={refreshVideos} disabled={isGenerating}>
+              <button type="button" onClick={refreshVideos} disabled={isGenerating || isRefreshing}>
                 Refresh Videos
               </button>
               {error && <p className="error">{error}</p>}

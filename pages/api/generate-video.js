@@ -24,9 +24,14 @@ export default async function handler(req, res) {
     const videoFileName = `${celebrityName.toLowerCase().replace(/\s+/g, '-')}-history.mp4`;
     const videoPath = join(repoDir, 'videos', videoFileName);
     const videoUrl = `https://raw.githubusercontent.com/g-h-0-S-t/sports-reels-videos/main/videos/${videoFileName}`;
-    const pythonScriptPath = process.env.NODE_ENV === 'development'
-      ? '/Users/ribhubiswas/Desktop/data/experiments/sports-reels/generate_videos.py'
-      : '/app/generate_videos.py';
+    const pythonScriptPath = join(process.cwd(), 'generate_videos.py');
+
+    // Verify Python script exists
+    console.log('[GenerateVideo] Resolved Python script path:', pythonScriptPath);
+    if (!existsSync(pythonScriptPath)) {
+      console.error('[GenerateVideo] Python script not found at:', pythonScriptPath);
+      throw new Error('Python script not found in project root');
+    }
 
     // Clone repo
     console.log('[GenerateVideo] Cloning repo to:', repoDir);
