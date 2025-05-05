@@ -93,9 +93,6 @@ export default async function handler(req, res) {
       // Ensure remote URL includes PAT
       execSync(`cd ${repoDir} && git remote set-url origin ${gitUrl}`, { stdio: 'inherit' });
       console.log('[GenerateVideo] Remote URL set:', gitUrl.replace(githubToken, '****'));
-      // Cache PAT in credential helper
-      execSync(`cd ${repoDir} && printf "protocol=https\nhost=github.com\nusername=git\npassword=${githubToken}\n" | git credential-osxkeychain store`, { stdio: 'inherit' });
-      console.log('[GenerateVideo] PAT cached in credential helper');
       execSync(`cd ${repoDir} && git add videos.json videos/${videoFileName} && git commit -m "Add video for ${celebrityName}" && git push origin main`, { stdio: 'inherit' });
       console.log('[GenerateVideo] Push successful');
     } catch (error) {

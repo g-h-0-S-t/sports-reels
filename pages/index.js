@@ -199,22 +199,30 @@ export default function Home({ videos: initialVideos }) {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         console.log(`[Fetch] Attempt ${attempt}/${maxRetries} for ${url}`);
-        const controller = new AbortController();
-        const id = setTimeout(() => controller.abort(), timeout);
-        try {
-          const response = await fetch(url, { ...options, signal: controller.signal });
-          clearTimeout(id);
+        if (url === '/api/generate-video') {
+          // No timeout for generate-video to wait for completion
+          const response = await fetch(url, options);
           console.log(`[Fetch] Success for ${url}, Status: ${response.status}`);
           return response;
-        } catch (error) {
-          clearTimeout(id);
-          if (error.name === 'AbortError') {
-            console.error(`[Fetch] Timeout after ${timeout}ms for ${url}`);
-            if (attempt === maxRetries) {
-              throw new Error('Request timed out, but video may still be generating');
+        } else {
+          // Apply timeout for other endpoints
+          const controller = new AbortController();
+          const id = setTimeout(() => controller.abort(), timeout);
+          try {
+            const response = await fetch(url, { ...options, signal: controller.signal });
+            clearTimeout(id);
+            console.log(`[Fetch] Success for ${url}, Status: ${response.status}`);
+            return response;
+          } catch (error) {
+            clearTimeout(id);
+            if (error.name === 'AbortError') {
+              console.error(`[Fetch] Timeout after ${timeout}ms for ${url}`);
+              if (attempt === maxRetries) {
+                throw new Error(`Request timed out for ${url}`);
+              }
+            } else {
+              throw error;
             }
-          } else {
-            throw error;
           }
         }
       } catch (error) {
@@ -268,7 +276,7 @@ export default function Home({ videos: initialVideos }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
-      }, 60000);
+      }, null);
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -300,9 +308,7 @@ export default function Home({ videos: initialVideos }) {
       }
     } catch (err) {
       console.error('[Submit] Error:', err.message);
-      setError(err.message === 'signal is aborted without reason'
-        ? 'Request timed out, but video may still be generating'
-        : `Failed to generate video: ${err.message}. Check server logs for details.`);
+      setError(`Failed to generate video: ${err.message}. Check server logs for details.`);
     } finally {
       console.log('[Submit] Resetting isGenerating');
       setIsGenerating(false);
