@@ -1,6 +1,5 @@
 moviepy==1.0.3
-transformers==4.44.2
 gtts==2.5.3
 requests==2.32.3
-torch==2.4.1
 psutil==6.0.0
+pillow==10.4.0

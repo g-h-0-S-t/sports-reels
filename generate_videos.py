@@ -7,6 +7,8 @@ from gtts import gTTS
 import requests
 import logging
 import psutil
+from PIL import Image
+import io
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -28,7 +30,7 @@ def log_dir_usage(dir_path):
     logger.info(f"{dir_path} usage: {total_size / 1024 / 1024:.2f} MB")
 
 def check_dependencies():
-    dependencies = ['moviepy', 'gtts', 'requests', 'psutil']
+    dependencies = ['moviepy', 'gtts', 'requests', 'psutil', 'PIL']
     for dep in dependencies:
         try:
             __import__(dep)
@@ -37,25 +39,57 @@ def check_dependencies():
             logger.error(f"Dependency {dep} failed to load: {e}")
             sys.exit(1)
 
-def fetch_images(query, count=3, width=854, height=480):
+def fetch_images(query, count=10, width=426, height=240):
     access_key = os.environ.get('UNSPLASH_ACCESS_KEY')
     if not access_key:
         logger.error("UNSPLASH_ACCESS_KEY environment variable not set")
         sys.exit(1)
-    url = f"https://api.unsplash.com/search/photos?query={query}&per_page={count}&client_id={access_key}&w={width}&h={height}"
+    images = []
     try:
+        # Primary query
+        url = f"https://api.unsplash.com/search/photos?query={query}&per_page={count}&client_id={access_key}&w={width}&h={height}"
         response = requests.get(url, timeout=10)
         response.raise_for_status()
         data = response.json()
         images = [photo['urls']['raw'] + f'&w={width}&h={height}' for photo in data['results']]
-        if len(data['results']) < count:
-            logger.warning(f"Only {len(data['results'])} images for {query}, adding fallback")
-            images += [f"https://source.unsplash.com/{width}x{height}/?sports"] * (count - len(data['results']))
-        logger.info(f"Fetched {len(images)} images for query: {query}")
-        return images
+        logger.info(f"Fetched {len(data['results'])} primary images for query: {query}")
+        
+        # Fallback if needed
+        if len(images) < count:
+            remaining = count - len(images)
+            logger.warning(f"Only {len(images)} images for {query}, fetching {remaining} fallback images")
+            fallback_url = f"https://api.unsplash.com/search/photos?query=sports&per_page={remaining}&client_id={access_key}&w={width}&h={height}"
+            fallback_response = requests.get(fallback_url, timeout=10)
+            fallback_response.raise_for_status()
+            fallback_data = fallback_response.json()
+            images += [photo['urls']['raw'] + f'&w={width}&h={height}' for photo in fallback_data['results']]
+            logger.info(f"Added {len(fallback_data['results'])} fallback images")
+        
+        return images[:count]
     except Exception as e:
         logger.error(f"Failed to fetch images for {query}: {e}")
         raise
+
+def validate_image(img_data, img_path):
+    try:
+        img = Image.open(io.BytesIO(img_data))
+        img.verify()
+        img.close()
+        logger.info(f"Validated image: {img_path}")
+        return True
+    except Exception as e:
+        logger.error(f"Invalid image at {img_path}: {e}")
+        return False
+
+def create_default_image(img_path, width=426, height=240):
+    try:
+        img = Image.new('RGB', (width, height), color='gray')
+        img.save(img_path, 'JPEG')
+        logger.info(f"Created default image: {img_path}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to create default image {img_path}: {e}")
+        return False
 
 def create_video(celebrity, output_path, custom_script=None):
     logger.info(f"Creating video for {celebrity}")
@@ -64,6 +98,7 @@ def create_video(celebrity, output_path, custom_script=None):
     
     audio_path = os.path.join(os.path.dirname(output_path), f"{celebrity.replace(' ', '_')}_audio.mp3")
     temp_image_paths = []
+    clips = []
     try:
         # Require custom script
         if not custom_script:
@@ -83,46 +118,71 @@ def create_video(celebrity, output_path, custom_script=None):
         audio_duration = audio.duration
         logger.info(f"Audio duration: {audio_duration}s")
         
-        # Check memory before proceeding
-        if log_memory_usage() > 450:
+        # Check memory
+        if log_memory_usage() > 300:
             raise MemoryError("Memory usage too high, aborting")
         
         # Fetch images
-        image_urls = fetch_images(celebrity, count=3, width=854, height=480)
-        clips = []
-        num_images = len(image_urls)
-        duration_per_image = audio_duration / num_images if num_images > 0 else audio_duration
-        logger.info(f"Total video duration: {audio_duration}s, {num_images} images, {duration_per_image}s per image, frames: {int(audio_duration * 24)}")
+        image_urls = fetch_images(celebrity, count=10, width=426, height=240)
+        num_images = 0
+        duration_per_image = audio_duration / 10  # 10 images
+        logger.info(f"Total video duration: {audio_duration}s, target 10 images, {duration_per_image}s per image, frames: {int(audio_duration * 12)}")
         for i, url in enumerate(image_urls):
             img_path = os.path.join(os.path.dirname(output_path), f"temp_{i}.jpg")
-            logger.info(f"Saving image to: {img_path}")
-            img_data = requests.get(url, timeout=10).content
-            with open(img_path, 'wb') as f:
-                f.write(img_data)
-            clip = ImageClip(img_path, duration=duration_per_image)
-            clips.append(clip)
-            temp_image_paths.append(img_path)
-            log_memory_usage()
-            log_dir_usage(os.path.dirname(output_path))
-            clip.close()  # Close immediately
+            logger.info(f"Fetching image {i+1}/10: {url}")
+            try:
+                img_data = requests.get(url, timeout=10).content
+                if not validate_image(img_data, img_path):
+                    logger.warning(f"Invalid image {url}, using default")
+                    if not create_default_image(img_path):
+                        continue
+                else:
+                    with open(img_path, 'wb') as f:
+                        f.write(img_data)
+                clip = ImageClip(img_path, duration=duration_per_image)
+                clips.append(clip)
+                temp_image_paths.append(img_path)
+                num_images += 1
+                logger.info(f"Added image {num_images}/10: {img_path}")
+                log_memory_usage()
+                log_dir_usage(os.path.dirname(output_path))
+                clip.close()
+            except Exception as e:
+                logger.error(f"Failed to process image {url}: {e}")
+                logger.info(f"Using default image for {img_path}")
+                if create_default_image(img_path):
+                    clip = ImageClip(img_path, duration=duration_per_image)
+                    clips.append(clip)
+                    temp_image_paths.append(img_path)
+                    num_images += 1
+                    logger.info(f"Added default image {num_images}/10: {img_path}")
+                    clip.close()
+        
+        # Require exactly 10 images
+        if num_images < 10:
+            logger.error(f"Only {num_images} valid images, 10 required")
+            raise ValueError("Exactly 10 valid images required")
         
         # Create video
+        logger.info("Concatenating 10 clips")
         video = concatenate_videoclips(clips, method="compose")
         final_video = video.set_audio(audio)
         
-        # Write video with optimized settings
+        # Write video
         logger.info(f"Saving video to: {output_path}")
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         try:
+            logger.info("Writing video with initial settings")
             final_video.write_videofile(
                 output_path,
                 codec='libx264',
                 audio_codec='aac',
-                fps=24,
+                fps=12,
                 preset='ultrafast',
                 threads=1,
-                bitrate='800k',
-                logger='bar'
+                bitrate='400k',
+                logger='bar',
+                temp_audiofile=os.path.join(os.path.dirname(output_path), 'temp_audio.m4a')
             )
             logger.info(f"Video written successfully: {output_path}")
         except Exception as e:
@@ -132,10 +192,10 @@ def create_video(celebrity, output_path, custom_script=None):
                 output_path,
                 codec='libx264',
                 audio_codec='aac',
-                fps=15,
+                fps=10,
                 preset='ultrafast',
                 threads=1,
-                bitrate='500k',
+                bitrate='200k',
                 logger='bar',
                 temp_audiofile=os.path.join(os.path.dirname(output_path), 'temp_audio.m4a')
             )
@@ -155,7 +215,6 @@ def create_video(celebrity, output_path, custom_script=None):
         logger.error(f"Failed to create video for {celebrity}: {e}")
         raise
     finally:
-        # Ensure cleanup
         for path in [audio_path] + temp_image_paths:
             if os.path.exists(path):
                 os.remove(path)

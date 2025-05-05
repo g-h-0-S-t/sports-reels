@@ -32,11 +32,12 @@ export default function Home({ videos: initialVideos }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState(null);
+  const [isFormActive, setIsFormActive] = useState(false);
   const videoRefs = useRef([]);
   const hasUserInteracted = useRef(false);
 
   useEffect(() => {
-    if (!isStarted || displayedVideos.length === 0) return;
+    if (!isStarted || displayedVideos.length === 0 || isFormActive) return;
 
     // Function to play video
     const playVideo = (video) => {
@@ -46,7 +47,6 @@ export default function Home({ videos: initialVideos }) {
         if (playPromise !== undefined) {
           playPromise.catch(error => {
             console.log("Unmuted autoplay failed, trying muted:", error);
-            // If unmuted fails, try muted as fallback
             video.muted = true;
             video.play().catch(err => {
               console.error("Both muted and unmuted autoplay failed:", err);
@@ -59,7 +59,7 @@ export default function Home({ videos: initialVideos }) {
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (entry.isIntersecting) {
+          if (entry.isIntersecting && !isFormActive) {
             playVideo(entry.target);
           } else {
             entry.target.pause();
@@ -76,22 +76,22 @@ export default function Home({ videos: initialVideos }) {
     videoRefs.current.forEach((video) => {
       if (video) {
         observer.observe(video);
-        // Try to play immediately if video is already visible
-        if (video.getBoundingClientRect().top < window.innerHeight) {
+        if (!isFormActive && video.getBoundingClientRect().top < window.innerHeight) {
           playVideo(video);
         }
       }
     });
 
     return () => observer.disconnect();
-  }, [isStarted, displayedVideos]);
+  }, [isStarted, displayedVideos, isFormActive]);
 
   useEffect(() => {
     console.log('Videos state updated:', videos);
     console.log('Displayed videos:', displayedVideos);
     console.log('Current video index:', currentVideo);
     console.log('Has user interacted:', hasUserInteracted.current);
-  }, [videos, displayedVideos, currentVideo]);
+    console.log('Is form active:', isFormActive);
+  }, [videos, displayedVideos, currentVideo, isFormActive]);
 
   const handleSearch = (e) => {
     const query = e.target.value.toLowerCase();
@@ -116,6 +116,17 @@ export default function Home({ videos: initialVideos }) {
       [name]: value,
       videoUrl: name === 'celebrityName' ? `/videos/${value.toLowerCase().replace(/\s+/g, '-')}-history.mp4` : prev.videoUrl
     }));
+  };
+
+  const handleFormFocus = () => {
+    setIsFormActive(true);
+    videoRefs.current.forEach((video) => {
+      if (video) video.pause();
+    });
+  };
+
+  const handleFormBlur = () => {
+    setIsFormActive(false);
   };
 
   const pollVideo = async (videoUrl, maxAttempts = 180, interval = 5000) => {
@@ -155,7 +166,8 @@ export default function Home({ videos: initialVideos }) {
     e.preventDefault();
     setError(null);
     setIsGenerating(true);
-    hasUserInteracted.current = true; // User interaction from form submission
+    setIsFormActive(false); // Allow videos to play after submission
+    hasUserInteracted.current = true;
 
     try {
       const response = await fetch('/api/generate-video', {
@@ -202,7 +214,7 @@ export default function Home({ videos: initialVideos }) {
       ) : (
         <>
           <div className="form-container">
-          <h1 className="title">Sports Reels</h1>
+            <h1 className="title">Sports Reels</h1>
             <h2>Create or Search Sports Reels (scroll down to view reels!)</h2>
             <div className="search-container">
               <label>
@@ -211,11 +223,13 @@ export default function Home({ videos: initialVideos }) {
                   type="text"
                   value={searchQuery}
                   onChange={handleSearch}
+                  onFocus={handleFormFocus}
+                  onBlur={handleFormBlur}
                   placeholder="e.g., Lionel Messi"
                 />
               </label>
             </div>
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit} onFocus={handleFormFocus} onBlur={handleFormBlur}>
               <label>
                 Celebrity Name:
                 <input
@@ -283,7 +297,6 @@ export default function Home({ videos: initialVideos }) {
                 controls
                 playsInline
                 preload="auto"
-                autoPlay
                 defaultMuted={false}
               />
               <div className="overlay">
