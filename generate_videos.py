@@ -111,24 +111,44 @@ def create_video(celebrity, output_path, custom_script=None):
             temp_image_paths.append(img_path)
             log_memory_usage()
             log_dir_usage(os.path.dirname(output_path))
+            # Close image file immediately to free memory
+            clip.close()
         
         # Create video
         video = concatenate_videoclips(clips, method="compose")
         final_video = video.set_audio(audio)
         
-        # Write video
+        # Write video with optimized settings
         logger.info(f"Saving video to: {output_path}")
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        final_video.write_videofile(
-            output_path,
-            codec='libx264',
-            audio_codec='aac',
-            fps=30,
-            preset='medium',
-            threads=2,
-            bitrate='2000k'
-        )
-        logger.info(f"Video written successfully: {output_path}")
+        try:
+            final_video.write_videofile(
+                output_path,
+                codec='libx264',
+                audio_codec='aac',
+                fps=30,
+                preset='veryfast',  # Faster encoding
+                threads=1,          # Single thread to reduce memory
+                bitrate='1500k',    # Lower bitrate
+                logger='bar'        # Minimal logging
+            )
+            logger.info(f"Video written successfully: {output_path}")
+        except Exception as e:
+            logger.error(f"Video encoding failed: {e}")
+            # Retry with lower settings
+            logger.info("Retrying with lower resolution and bitrate")
+            final_video.write_videofile(
+                output_path,
+                codec='libx264',
+                audio_codec='aac',
+                fps=24,             # Lower FPS
+                preset='ultrafast', # Fastest encoding
+                threads=1,
+                bitrate='1000k',
+                logger='bar'
+            )
+            logger.info(f"Video written successfully on retry: {output_path}")
+        
         log_memory_usage()
         log_dir_usage(os.path.dirname(output_path))
         
@@ -140,11 +160,19 @@ def create_video(celebrity, output_path, custom_script=None):
             clip.close()
         os.remove(audio_path)
         for img_path in temp_image_paths:
-            os.remove(img_path)
+            if os.path.exists(img_path):
+                os.remove(img_path)
         
     except Exception as e:
         logger.error(f"Failed to create video for {celebrity}: {e}")
         raise
+    finally:
+        # Ensure cleanup even on failure
+        if os.path.exists(audio_path):
+            os.remove(audio_path)
+        for img_path in temp_image_paths:
+            if os.path.exists(img_path):
+                os.remove(img_path)
 
 def main():
     parser = argparse.ArgumentParser(description="Generate sports reels videos")
