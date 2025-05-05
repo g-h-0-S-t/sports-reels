@@ -1,84 +1,12 @@
 {
   "videos": [
     {
-      "id": "1",
+      "id": "1746442211094",
+      "celebrityName": "Lionel Messi",
       "title": "Lionel Messi's Journey",
       "description": "A brief history of Messi's rise to football stardom.",
-      "celebrityName": "Lionel Messi",
-      "videoUrl": "/videos/messi-history.mp4",
-      "customScript": "Lionel Messi, the Argentine wizard, born in 1987, redefined football with his magical dribbling and pinpoint vision! From Rosario to global glory, he’s clinched 7 Ballon d’Ors, leading Barcelona and Argentina to epic triumphs. The GOAT’s legacy shines brighter than a supernova!"
-    },
-    {
-      "id": "2",
-      "title": "Serena Williams' Legacy",
-      "description": "Highlights of Serena's tennis career.",
-      "celebrityName": "Serena Williams",
-      "videoUrl": "/videos/serena-history.mp4",
-      "customScript": "Serena Williams, the queen of tennis, stormed the courts with ferocious power! Born in 1981, she smashed records, winning 23 Grand Slams and 4 Olympic golds. Her unrivaled dominance and fiery spirit redefined the game, making her a global icon of greatness!"
-    },
-    {
-      "id": "3",
-      "title": "Cristiano Ronaldo's Reign",
-      "description": "The unstoppable rise of football’s ultimate machine.",
-      "celebrityName": "Cristiano Ronaldo",
-      "videoUrl": "/videos/ronaldo-history.mp4",
-      "customScript": "Cristiano Ronaldo, the Portuguese phenomenon, soars like a rocket! Born in 1985, CR7’s relentless drive and jaw-dropping goals earned him 5 Ballon d’Ors. From Manchester to Madrid, his thunderous strikes and epic work ethic crowned him football’s unstoppable king!"
-    },
-    {
-      "id": "4",
-      "title": "LeBron James' Dynasty",
-      "description": "Chronicling LeBron’s basketball supremacy.",
-      "celebrityName": "LeBron James",
-      "videoUrl": "/videos/lebron-history.mp4",
-      "customScript": "LeBron James, the King of basketball, rules the hardwood! Born in 1984, his explosive dunks and genius playmaking led to 4 NBA titles and 4 MVPs. From Cleveland to LA, LeBron’s colossal legacy towers over the game like a slam-dunking titan!"
-    },
-    {
-      "id": "5",
-      "title": "Virat Kohli’s Cricket Saga",
-      "description": "The journey of India’s cricket maestro.",
-      "celebrityName": "Virat Kohli",
-      "videoUrl": "/videos/kohli-history.mp4",
-      "customScript": "Virat Kohli, India’s cricket colossus, blazes like a comet! Born in 1988, his razor-sharp batting and fierce leadership smashed 70+ centuries. Captaining India to epic victories, King Kohli’s passion and style make him a global cricket legend!"
-    },
-    {
-      "id": "6",
-      "title": "Michael Phelps’ Aquatic Empire",
-      "description": "The story of the greatest Olympian swimmer.",
-      "celebrityName": "Michael Phelps",
-      "videoUrl": "/videos/phelps-history.mp4",
-      "customScript": "Michael Phelps, the Baltimore Bullet, conquered the seas! Born in 1985, he amassed 23 Olympic golds, shattering records with his aquatic dominance. With a wingspan like a titan, Phelps’ relentless pursuit of glory made him the ultimate swimming legend!"
-    },
-    {
-      "id": "7",
-      "title": "Usain Bolt’s Lightning Legacy",
-      "description": "The saga of the fastest man alive.",
-      "celebrityName": "Usain Bolt",
-      "videoUrl": "/videos/bolt-history.mp4",
-      "customScript": "Usain Bolt, Jamaica’s lightning bolt, electrified the world! Born in 1986, he blazed to 8 Olympic golds, smashing 100m and 200m records. With his iconic pose and unstoppable speed, Bolt’s charisma and power crowned him the king of the track!"
-    },
-    {
-      "id": "8",
-      "title": "Kapil Dev's Legacy",
-      "description": "The Hurricane Who Changed Indian Cricket Forever",
-      "celebrityName": "Kapil Dev",
-      "videoUrl": "/videos/kapil-dev-history.mp4",
-      "customScript": "Before Virat Kohli's aggression or Dhoni’s calm, there was Kapil Dev—a fast-bowling all-rounder with a lion’s heart and the charisma of a born leader. Rising from Chandigarh with nothing but raw pace and determination, Kapil didn't just play cricket—he revolutionized it for India. With fearless batting, lethal swing bowling, and a smile that masked fire, he took India to its first-ever World Cup triumph in 1983, stunning the cricketing world and igniting a billion dreams.\n\nWhether smashing a jaw-dropping 175 against Zimbabwe* or breaking Richard Hadlee’s bowling record, Kapil was always ahead of his time—a trailblazer, a game-changer, and a true captain marvel."
-    },
-    {
-      "id": "1745988682682",
-      "celebrityName": "Michael Schumacher",
-      "title": "Michael Schumacher’s Formula 1 Dynasty",
-      "description": "The story of a racing legend who redefined greatness.",
-      "customScript": "Michael Schumacher, Germany’s Formula 1 icon, dominated the track! Born in 1969, he clinched 7 World Championships, including 5 straight with Ferrari. With 91 wins and unmatched skill, Schumacher’s legacy as a motorsport titan endures!",
-      "videoUrl": "/videos/michael-schumacher-history.mp4"
-    },
-    {
-      "id": "1745994261249",
-      "celebrityName": "Rahul Dravid",
-      "title": "Rahul \"The Wall\" Dravid",
-      "description": "Meet the Wall — Rahul Dravid",
-      "customScript": "Not just a cricketer, but a masterclass in patience, precision, and quiet dominance. While others chased the spotlight, he built fortresses with his bat. Unshakeable at the crease, graceful under pressure, Dravid turned grit into art and gave Indian cricket its spine. Captain, coach, mentor — he’s the calm force behind countless triumphs. You don’t just watch Rahul Dravid. You learn from him.",
-      "videoUrl": "/videos/rahul-dravid-history.mp4"
+      "customScript": "Lionel Messi, the Argentine wizard, born in 1987, redefined football with his magical dribbling and pinpoint vision! From Rosario to global glory, he’s clinched 7 Ballon d’Ors, leading Barcelona and Argentina to epic triumphs. The GOAT’s legacy shines brighter than a supernova!",
+      "videoUrl": "https://raw.githubusercontent.com/g-h-0-S-t/sports-reels-videos/main/videos/lionel-messi-history.mp4"
     }
   ]
 }
