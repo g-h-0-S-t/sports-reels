@@ -17,19 +17,10 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
-  const videoId = Date.now().toString();
   const tempVideosDir = process.env.NODE_ENV === 'production' ? '/tmp/videos' : path.join(process.cwd(), 'temp', 'videos');
   const githubRepoUrl = 'https://github.com/g-h-0-S-t/sports-reels-videos.git';
   const rawVideoUrl = `https://raw.githubusercontent.com/g-h-0-S-t/sports-reels-videos/main/videos/${path.basename(videoUrl)}`;
   const videosJsonUrl = 'https://raw.githubusercontent.com/g-h-0-S-t/sports-reels-videos/main/videos.json';
-  const newVideo = {
-    id: videoId,
-    celebrityName,
-    title,
-    description,
-    customScript,
-    videoUrl: rawVideoUrl
-  };
 
   try {
     // Clean temporary files (.mp3, .jpg, .mp4)
@@ -59,7 +50,44 @@ export default async function handler(req, res) {
       console.error(`Error fetching videos.json: ${error.message}`);
       // Proceed with empty array if fetch fails
     }
-    videosData.videos.push(newVideo);
+
+    // Check for existing video with same videoUrl
+    let videoId;
+    const existingVideoIndex = videosData.videos.findIndex(v => v.videoUrl === rawVideoUrl);
+    if (existingVideoIndex !== -1) {
+      // Reuse existing ID and update entry
+      videoId = videosData.videos[existingVideoIndex].id;
+      console.log(`Re-generating existing video with ID ${videoId} for ${rawVideoUrl}`);
+      videosData.videos[existingVideoIndex] = {
+        id: videoId,
+        celebrityName,
+        title,
+        description,
+        customScript,
+        videoUrl: rawVideoUrl
+      };
+    } else {
+      // Create new ID and add entry
+      videoId = Date.now().toString();
+      console.log(`Generating new video with ID ${videoId} for ${rawVideoUrl}`);
+      videosData.videos.push({
+        id: videoId,
+        celebrityName,
+        title,
+        description,
+        customScript,
+        videoUrl: rawVideoUrl
+      });
+    }
+
+    const newVideo = {
+      id: videoId,
+      celebrityName,
+      title,
+      description,
+      customScript,
+      videoUrl: rawVideoUrl
+    };
 
     // Run generate_videos.py
     const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
@@ -106,7 +134,7 @@ export default async function handler(req, res) {
       await execPromise(`cd ${repoDir} && git add videos/${path.basename(videoUrl)} videos.json`);
       await execPromise(`cd ${repoDir} && git config user.email "6196046+g-h-0-S-t@users.noreply.github.com"`);
       await execPromise(`cd ${repoDir} && git config user.name "g-h-0-S-t"`);
-      await execPromise(`cd ${repoDir} && git commit -m "Add video ${path.basename(videoUrl)} and update videos.json"`);
+      await execPromise(`cd ${repoDir} && git commit -m "Add or update video ${path.basename(videoUrl)} and videos.json"`);
       await execPromise(`cd ${repoDir} && git push origin main`);
       console.log(`Pushed ${path.basename(videoUrl)} and videos.json to GitHub`);
 
