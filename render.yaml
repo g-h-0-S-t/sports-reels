@@ -3,11 +3,16 @@ services:
     name: sports-reels
     env: node
     plan: free
-    buildCommand: npm install && npm run build
-    startCommand: npm run start
+    buildCommand: |
+      apt-get update
+      apt-get install -y python3 python3-pip
+      pip3 install -r requirements.txt
+      npm install
+      npm run build
+    startCommand: npm start
     envVars:
       - key: NODE_VERSION
         value: 18
       - key: PYTHON_VERSION
-        value: 3.8
-    preDeployCommand: pip install -r requirements.txt
+        value: 3.9
+    autoDeploy: true

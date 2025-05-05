@@ -17,9 +17,8 @@ export default async function handler(req, res) {
   }
 
   const videoId = Date.now().toString();
-  const isVercel = process.env.VERCEL;
-  const videosDir = isVercel ? '/tmp/videos' : path.join(process.cwd(), 'public', 'videos');
-  const videosJsonPath = isVercel ? '/tmp/videos.json' : path.join(process.cwd(), 'data', 'videos.json');
+  const videosDir = path.join(process.cwd(), 'public', 'videos');
+  const videosJsonPath = path.join(process.cwd(), 'data', 'videos.json');
   const newVideo = {
     id: videoId,
     celebrityName,
@@ -56,30 +55,17 @@ export default async function handler(req, res) {
     // Run generate_videos.py
     const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
     const scriptPath = path.join(process.cwd(), 'generate_videos.py');
-    const logPath = isVercel ? '/tmp/generate_videos.log' : path.join(process.cwd(), 'generate_videos.log');
-    const command = isVercel
-      ? `${pythonCommand} "${scriptPath}" --single ${videoId} > ${logPath} 2>&1 &`
-      : `${pythonCommand} "${scriptPath}" --single ${videoId} > ${logPath} 2>&1`;
+    const logPath = path.join(process.cwd(), 'generate_videos.log');
+    const command = `${pythonCommand} "${scriptPath}" --single ${videoId} > ${logPath} 2>&1`;
     console.log(`Executing: ${command}`);
 
-    if (isVercel) {
-      exec(command, (error) => {
-        if (error) {
-          console.error(`Background video generation error: ${error.message}`);
-        } else {
-          console.log('Background video generation started');
-        }
-      });
-      res.status(202).json(newVideo);
-    } else {
-      try {
-        await execPromise(command);
-        console.log('Video generation completed');
-        res.status(200).json(newVideo);
-      } catch (error) {
-        console.error(`Video generation failed: ${error.message}`);
-        res.status(500).json({ error: `Video generation failed: ${error.message}` });
-      }
+    try {
+      await execPromise(command);
+      console.log('Video generation completed');
+      res.status(200).json(newVideo);
+    } catch (error) {
+      console.error(`Video generation failed: ${error.message}`);
+      res.status(500).json({ error: `Video generation failed: ${error.message}` });
     }
   } catch (error) {
     console.error('Error in generate-video API:', error.message);

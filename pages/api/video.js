@@ -9,7 +9,8 @@ export default function handler(req, res) {
   }
 
   const decodedPath = decodeURIComponent(filePath);
-  const absolutePath = path.resolve('/tmp/videos', path.basename(decodedPath));
+  const videosDir = path.join(process.cwd(), 'public', 'videos');
+  const absolutePath = path.join(videosDir, path.basename(decodedPath));
 
   if (!fs.existsSync(absolutePath)) {
     return res.status(404).json({ error: 'Video not found' });

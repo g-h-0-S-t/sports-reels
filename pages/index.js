@@ -25,7 +25,6 @@ export default function Home({ videos: initialVideos }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState(null);
   const videoRefs = useRef([]);
-  const isVercel = process.env.VERCEL;
 
   useEffect(() => {
     if (!isStarted || displayedVideos.length === 0) return;
@@ -38,7 +37,6 @@ export default function Home({ videos: initialVideos }) {
           if (entry.isIntersecting && index !== -1) {
             video.play().catch((error) => {
               console.error('Autoplay failed:', error);
-              // alert('Please interact with the page to enable audio playback.');
             });
             setCurrentVideo(index);
           } else {
@@ -72,7 +70,7 @@ export default function Home({ videos: initialVideos }) {
     const query = e.target.value.toLowerCase();
     setSearchQuery(query);
     videoRefs.current = Array(displayedVideos.length).fill(null);
-    let filtered = videos; // Default to all videos
+    let filtered = videos;
     if (query.trim() === '') {
       setDisplayedVideos(videos);
     } else {
@@ -94,16 +92,15 @@ export default function Home({ videos: initialVideos }) {
   };
 
   const pollVideo = async (videoUrl, maxAttempts = 180, interval = 5000) => {
-    const apiUrl = isVercel ? `/api/video?path=${encodeURIComponent(videoUrl)}` : videoUrl;
     for (let i = 0; i < maxAttempts; i++) {
       try {
-        const response = await fetch(apiUrl);
+        const response = await fetch(videoUrl);
         if (response.ok) {
-          console.log(`Video found: ${apiUrl}`);
+          console.log(`Video found: ${videoUrl}`);
           return true;
         }
       } catch (err) {
-        console.log(`Video not ready: ${apiUrl}`);
+        console.log(`Video not ready: ${videoUrl}`);
       }
       await new Promise(resolve => setTimeout(resolve, interval));
     }
@@ -248,7 +245,7 @@ export default function Home({ videos: initialVideos }) {
             <div key={video.id} className="reel-item">
               <video
                 ref={(el) => (videoRefs.current[index] = el)}
-                src={isVercel ? `/api/video?path=${encodeURIComponent(video.videoUrl)}` : video.videoUrl}
+                src={video.videoUrl}
                 controls
                 loop
                 playsInline
