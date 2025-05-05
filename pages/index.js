@@ -118,25 +118,8 @@ export default function Home({ videos: initialVideos }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
-
-    const existingVideo = videos.find(
-      (video) => video.celebrityName.toLowerCase() === formData.celebrityName.toLowerCase()
-    );
-
-    if (existingVideo) {
-      setDisplayedVideos([existingVideo]);
-      setFormData({
-        celebrityName: '',
-        title: '',
-        description: '',
-        customScript: '',
-        videoUrl: ''
-      });
-      console.log('Existing video found:', existingVideo);
-      return;
-    }
-
     setIsGenerating(true);
+
     try {
       const response = await fetch('/api/generate-video', {
         method: 'POST',
@@ -150,9 +133,31 @@ export default function Home({ videos: initialVideos }) {
       }
 
       const newVideo = await response.json();
-      setVideos((prev) => [...prev, newVideo]);
+      setVideos((prev) => {
+        const existingIndex = prev.findIndex(
+          (video) => video.videoUrl === newVideo.videoUrl
+        );
+        if (existingIndex !== -1) {
+          // Update existing video
+          const updatedVideos = [...prev];
+          updatedVideos[existingIndex] = newVideo;
+          return updatedVideos;
+        }
+        // Add new video
+        return [...prev, newVideo];
+      });
       await pollVideo(newVideo.videoUrl);
-      setDisplayedVideos((prev) => [...prev, newVideo]);
+      setDisplayedVideos((prev) => {
+        const existingIndex = prev.findIndex(
+          (video) => video.videoUrl === newVideo.videoUrl
+        );
+        if (existingIndex !== -1) {
+          const updatedVideos = [...prev];
+          updatedVideos[existingIndex] = newVideo;
+          return updatedVideos;
+        }
+        return [...prev, newVideo];
+      });
       setFormData({
         celebrityName: '',
         title: '',
@@ -160,7 +165,7 @@ export default function Home({ videos: initialVideos }) {
         customScript: '',
         videoUrl: ''
       });
-      console.log('New video added:', newVideo);
+      console.log('Video processed:', newVideo);
     } catch (err) {
       console.error('Submit error:', err.message);
       setError(err.message);
@@ -241,7 +246,7 @@ export default function Home({ videos: initialVideos }) {
                 />
               </label>
               <button type="submit" disabled={isGenerating}>
-                {isGenerating ? 'Generating...' : 'Generate Reel'}
+                {isGenerating ? 'Generating...' : 'Generate/Re-generate Reel'}
               </button>
               {error && <p className="error">{error}</p>}
             </form>
