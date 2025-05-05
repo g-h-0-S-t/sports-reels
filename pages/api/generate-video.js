@@ -23,7 +23,7 @@ export default async function handler(req, res) {
   const videosJsonUrl = 'https://raw.githubusercontent.com/g-h-0-S-t/sports-reels-videos/main/videos.json';
 
   try {
-    // Clean temporary files (.mp3, .jpg, .mp4)
+    // Clean temporary files (.mp3, .jpg, .mp4) before generation
     if (fs.existsSync(tempVideosDir)) {
       fs.readdirSync(tempVideosDir).forEach(file => {
         fs.unlinkSync(path.join(tempVideosDir, file));
@@ -137,6 +137,21 @@ export default async function handler(req, res) {
       await execPromise(`cd ${repoDir} && git commit -m "Add or update video ${path.basename(videoUrl)} and videos.json"`);
       await execPromise(`cd ${repoDir} && git push origin main`);
       console.log(`Pushed ${path.basename(videoUrl)} and videos.json to GitHub`);
+
+      // Clean up temporary files after successful push
+      try {
+        if (fs.existsSync(videoFilePath)) {
+          fs.unlinkSync(videoFilePath);
+          console.log(`Deleted temporary video: ${videoFilePath}`);
+        }
+        if (fs.existsSync(repoDir)) {
+          fs.rmSync(repoDir, { recursive: true, force: true });
+          console.log(`Deleted temporary repo: ${repoDir}`);
+        }
+      } catch (cleanupError) {
+        console.error(`Failed to clean up temporary files: ${cleanupError.message}`);
+        // Don't fail the request due to cleanup error
+      }
 
       res.status(200).json(newVideo);
     } catch (error) {
