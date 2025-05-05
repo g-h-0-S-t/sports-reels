@@ -6,7 +6,8 @@ This project creates AI-generated history videos for sports celebrities and disp
 
 - Node.js (v14 or higher)
 - Python 3.x
-- Unsplash API access key (already included in `generate_videos.py`)
+- Unsplash API access key
+- GitHub personal access token
 
 ## Setup Instructions
 
