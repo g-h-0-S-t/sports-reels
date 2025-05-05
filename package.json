@@ -15,10 +15,11 @@
     "postinstall": "echo 'Python dependencies installed automatically on npm run dev/build/vercel-build. Manual install: pip3 install -r requirements.txt'"
   },
   "dependencies": {
+    "dotenv": "^16.5.0",
     "next": "^15.3.1",
+    "node-fetch": "^2.6.12",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "node-fetch": "^2.6.12"
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "eslint": "^8.57.0",

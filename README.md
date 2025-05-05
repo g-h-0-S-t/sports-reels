@@ -27,7 +27,6 @@ This project creates AI-generated history videos for sports celebrities and disp
 
 4. **Set up environment keys - GITHUB_TOKEN , UNSPLASH_ACCESS_KEY**  
 
-
 5. **Start the Next.js app:**  
 
    ```bash

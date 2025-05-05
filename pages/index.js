@@ -33,67 +33,64 @@ export default function Home({ videos: initialVideos }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState(null);
   const videoRefs = useRef([]);
+  const hasUserInteracted = useRef(false);
 
   useEffect(() => {
     if (!isStarted || displayedVideos.length === 0) return;
 
+    // Function to play video
+    const playVideo = (video) => {
+      if (video.paused) {
+        video.muted = false; // Try to play unmuted
+        const playPromise = video.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(error => {
+            console.log("Unmuted autoplay failed, trying muted:", error);
+            // If unmuted fails, try muted as fallback
+            video.muted = true;
+            video.play().catch(err => {
+              console.error("Both muted and unmuted autoplay failed:", err);
+            });
+          });
+        }
+      }
+    };
+
     const observer = new IntersectionObserver(
       (entries) => {
-        let mostCenteredVideo = null;
-        let minDistanceToCenter = Infinity;
-
-        const viewportHeight = window.innerHeight;
-        const viewportCenter = viewportHeight / 2;
-
         entries.forEach((entry) => {
-          const video = entry.target;
-          const index = videoRefs.current.indexOf(video);
-          if (index !== -1 && entry.isIntersecting) {
-            const rect = video.getBoundingClientRect();
-            const videoCenter = rect.top + rect.height / 2;
-            const distanceToCenter = Math.abs(viewportCenter - videoCenter);
-            if (distanceToCenter < minDistanceToCenter) {
-              mostCenteredVideo = { video, index };
-              minDistanceToCenter = distanceToCenter;
-            }
-          }
-        });
-
-        videoRefs.current.forEach((video, idx) => {
-          if (!video) return;
-          if (mostCenteredVideo && mostCenteredVideo.video === video && mostCenteredVideo.index === idx) {
-            video.play().catch((error) => {
-              console.error('Autoplay failed:', error);
-            });
-            setCurrentVideo(idx);
+          if (entry.isIntersecting) {
+            playVideo(entry.target);
           } else {
-            video.pause();
-            video.currentTime = 0;
+            entry.target.pause();
           }
         });
       },
       {
-        threshold: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
+        root: null,
+        rootMargin: '0px',
+        threshold: 0.5
       }
     );
 
-    videoRefs.current.forEach((video, index) => {
-      if (video && video instanceof Element) {
+    videoRefs.current.forEach((video) => {
+      if (video) {
         observer.observe(video);
-      } else {
-        console.warn(`Skipping invalid ref at index ${index}:`, video);
+        // Try to play immediately if video is already visible
+        if (video.getBoundingClientRect().top < window.innerHeight) {
+          playVideo(video);
+        }
       }
     });
 
-    return () => {
-      observer.disconnect();
-    };
+    return () => observer.disconnect();
   }, [isStarted, displayedVideos]);
 
   useEffect(() => {
     console.log('Videos state updated:', videos);
     console.log('Displayed videos:', displayedVideos);
     console.log('Current video index:', currentVideo);
+    console.log('Has user interacted:', hasUserInteracted.current);
   }, [videos, displayedVideos, currentVideo]);
 
   const handleSearch = (e) => {
@@ -158,6 +155,7 @@ export default function Home({ videos: initialVideos }) {
     e.preventDefault();
     setError(null);
     setIsGenerating(true);
+    hasUserInteracted.current = true; // User interaction from form submission
 
     try {
       const response = await fetch('/api/generate-video', {
@@ -190,12 +188,16 @@ export default function Home({ videos: initialVideos }) {
     }
   };
 
+  const handleStart = () => {
+    setIsStarted(true);
+  };
+
   return (
     <div className="reel-container">
       {!isStarted ? (
         <div className="start-screen">
           <h1>Welcome to Sports Reels!</h1>
-          <button onClick={() => setIsStarted(true)}>Start Reels</button>
+          <button onClick={handleStart}>Start Reels</button>
         </div>
       ) : (
         <>
@@ -275,11 +277,13 @@ export default function Home({ videos: initialVideos }) {
               <video
                 ref={(el) => (videoRefs.current[index] = el)}
                 src={`${video.videoUrl}?t=${Date.now()}`}
-                controls
-                loop
-                playsInline
-                muted
                 className="reel-video"
+                loop
+                controls
+                playsInline
+                preload="auto"
+                autoPlay
+                defaultMuted={false}
               />
               <div className="overlay">
                 <h2>{video.title}</h2>
