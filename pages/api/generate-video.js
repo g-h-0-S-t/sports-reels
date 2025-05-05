@@ -65,7 +65,9 @@ export default async function handler(req, res) {
     const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
     const scriptPath = path.join(process.cwd(), 'generate_videos.py');
     const logPath = path.join(process.cwd(), 'generate_videos.log');
-    const command = `${pythonCommand} "${scriptPath}" --single ${videoId} > ${logPath} 2>&1`;
+    // Escape customScript to handle quotes and spaces
+    const escapedCustomScript = customScript.replace(/"/g, '\\"');
+    const command = `${pythonCommand} "${scriptPath}" --single ${videoId} --celebrity "${celebrityName}" --video-url "${rawVideoUrl}" --custom-script "${escapedCustomScript}" > "${logPath}" 2>&1`;
     console.log(`Executing: ${command}`);
 
     try {
