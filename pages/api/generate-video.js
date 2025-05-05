@@ -1,6 +1,7 @@
 import { exec } from 'child_process';
 import fs from 'fs';
 import path from 'path';
+import fetch from 'node-fetch';
 import { promisify } from 'util';
 
 const execPromise = promisify(exec);
@@ -18,9 +19,9 @@ export default async function handler(req, res) {
 
   const videoId = Date.now().toString();
   const tempVideosDir = process.env.NODE_ENV === 'production' ? '/tmp/videos' : path.join(process.cwd(), 'temp', 'videos');
-  const videosJsonPath = path.join(process.cwd(), 'data', 'videos.json');
   const githubRepoUrl = 'https://github.com/g-h-0-S-t/sports-reels-videos.git';
   const rawVideoUrl = `https://raw.githubusercontent.com/g-h-0-S-t/sports-reels-videos/main/videos/${path.basename(videoUrl)}`;
+  const videosJsonUrl = 'https://raw.githubusercontent.com/g-h-0-S-t/sports-reels-videos/main/videos.json';
   const newVideo = {
     id: videoId,
     celebrityName,
@@ -42,14 +43,23 @@ export default async function handler(req, res) {
       console.log(`Created ${tempVideosDir}`);
     }
 
-    // Write to videos.json
+    // Fetch videos.json from GitHub
     let videosData = { videos: [] };
-    if (fs.existsSync(videosJsonPath)) {
-      videosData = JSON.parse(fs.readFileSync(videosJsonPath, 'utf8'));
+    try {
+      const response = await fetch(videosJsonUrl);
+      if (response.ok) {
+        videosData = await response.json();
+        console.log('Fetched videos.json from GitHub');
+      } else if (response.status === 404) {
+        console.log('videos.json not found in repo, using empty array');
+      } else {
+        throw new Error(`Failed to fetch videos.json: ${response.status}`);
+      }
+    } catch (error) {
+      console.error(`Error fetching videos.json: ${error.message}`);
+      // Proceed with empty array if fetch fails
     }
     videosData.videos.push(newVideo);
-    fs.writeFileSync(videosJsonPath, JSON.stringify(videosData, null, 2));
-    console.log(`Wrote video metadata to ${videosJsonPath}`);
 
     // Run generate_videos.py
     const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
@@ -80,14 +90,23 @@ export default async function handler(req, res) {
       }
       fs.mkdirSync(repoDir, { recursive: true });
       await execPromise(`git clone https://${githubToken}@github.com/g-h-0-S-t/sports-reels-videos.git ${repoDir}`);
+      
+      // Copy video
       const videoDestPath = path.join(repoDir, 'videos', path.basename(videoUrl));
       fs.copyFileSync(videoFilePath, videoDestPath);
-      await execPromise(`cd ${repoDir} && git add videos/${path.basename(videoUrl)}`);
+      
+      // Write videos.json
+      const videosJsonPath = path.join(repoDir, 'videos.json');
+      fs.writeFileSync(videosJsonPath, JSON.stringify(videosData, null, 2));
+      console.log(`Wrote videos.json to ${videosJsonPath}`);
+
+      // Commit and push
+      await execPromise(`cd ${repoDir} && git add videos/${path.basename(videoUrl)} videos.json`);
       await execPromise(`cd ${repoDir} && git config user.email "6196046+g-h-0-S-t@users.noreply.github.com"`);
       await execPromise(`cd ${repoDir} && git config user.name "g-h-0-S-t"`);
-      await execPromise(`cd ${repoDir} && git commit -m "Add video ${path.basename(videoUrl)}"`);
+      await execPromise(`cd ${repoDir} && git commit -m "Add video ${path.basename(videoUrl)} and update videos.json"`);
       await execPromise(`cd ${repoDir} && git push origin main`);
-      console.log(`Pushed ${path.basename(videoUrl)} to GitHub`);
+      console.log(`Pushed ${path.basename(videoUrl)} and videos.json to GitHub`);
 
       res.status(200).json(newVideo);
     } catch (error) {
