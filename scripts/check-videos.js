@@ -1,36 +1,46 @@
-const fs = require('fs').promises;
-const path = require('path');
+const fetch = require('node-fetch');
 const { exec } = require('child_process');
 const util = require('util');
 
 const execPromise = util.promisify(exec);
 
 async function checkVideos() {
-  const videosJsonPath = path.join(process.cwd(), 'data', 'videos.json');
-  const videosDir = path.join(process.cwd(), 'public', 'videos');
+  const videosJsonUrl = 'https://raw.githubusercontent.com/g-h-0-S-t/sports-reels-videos/main/videos.json';
 
   try {
-    // Read videos.json
-    const videosJson = await fs.readFile(videosJsonPath, 'utf8');
-    const { videos } = JSON.parse(videosJson);
-    const jsonMtime = (await fs.stat(videosJsonPath)).mtimeMs;
+    // Fetch videos.json from GitHub
+    let videos = [];
+    try {
+      const response = await fetch(videosJsonUrl);
+      if (response.ok) {
+        const data = await response.json();
+        videos = data.videos || [];
+        console.log('Fetched videos.json from GitHub');
+      } else if (response.status === 404) {
+        console.log('videos.json not found in repo, assuming empty');
+      } else {
+        throw new Error(`Failed to fetch videos.json: ${response.status}`);
+      }
+    } catch (error) {
+      console.error(`Error fetching videos.json: ${error.message}`);
+      // Proceed with empty array
+    }
 
     let needsRegeneration = false;
 
-    // Check each video
+    // Check each video's raw URL
     for (const video of videos) {
-      const fileName = path.basename(video.videoUrl);
-      const videoPath = path.join(videosDir, fileName);
-
+      const videoUrl = video.videoUrl; // e.g., https://raw.githubusercontent.com/g-h-0-S-t/sports-reels-videos/main/videos/serena-williams-history.mp4
       try {
-        const videoStat = await fs.stat(videoPath);
-        if (jsonMtime > videoStat.mtimeMs) {
-          console.log(`Video ${fileName} is outdated. Regeneration needed.`);
+        const response = await fetch(videoUrl, { method: 'HEAD' });
+        if (!response.ok) {
+          console.log(`Video ${videoUrl} missing (status: ${response.status}). Regeneration needed.`);
           needsRegeneration = true;
           break;
         }
-      } catch (err) {
-        console.log(`Video ${fileName} missing. Regeneration needed.`);
+        console.log(`Video ${videoUrl} exists`);
+      } catch (error) {
+        console.log(`Video ${videoUrl} inaccessible: ${error.message}. Regeneration needed.`);
         needsRegeneration = true;
         break;
       }
@@ -41,7 +51,7 @@ async function checkVideos() {
       return;
     }
 
-    // Run generate_videos.py with python3 for cross-platform compatibility
+    // Run generate_videos.py
     console.log('Regenerating videos...');
     const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
     const { stdout, stderr } = await execPromise(`${pythonCommand} generate_videos.py`);
