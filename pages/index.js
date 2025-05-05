@@ -202,7 +202,8 @@ export default function Home({ videos: initialVideos }) {
       ) : (
         <>
           <div className="form-container">
-            <h2>Create or Search Sports Reels</h2>
+          <h1 className="title">Sports Reels</h1>
+            <h2>Create or Search Sports Reels (scroll down to view reels!)</h2>
             <div className="search-container">
               <label>
                 Search Celebrity:
