@@ -5,7 +5,7 @@ export async function getStaticProps() {
   const videosJsonUrl = `https://api.github.com/repos/g-h-0-S-t/sports-reels-videos/contents/videos.json?ref=main&t=${Date.now()}`;
   const proxyUrl = new URL('/api/proxy-json', process.env.NODE_ENV === 'development'
     ? 'http://localhost:3000'
-    : process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000');
+    : process.env.NEXT_PUBLIC_APP_URL || 'https://sports-reels.onrender.com');
   proxyUrl.searchParams.append('url', videosJsonUrl);
   proxyUrl.searchParams.append('token', process.env.GITHUB_TOKEN);
 
@@ -162,13 +162,13 @@ export default function Home({ videos: initialVideos }) {
       try {
         const proxyUrl = `/api/proxy-video?url=${encodeURIComponent(videoUrl)}`;
         console.log(`[Poll] Polling via proxy: ${proxyUrl}`);
-        const response = await fetch(proxyUrl, {
+        const response = await fetchWithTimeout(proxyUrl, {
           headers: {
             'Cache-Control': 'no-cache, no-store, must-revalidate',
             'Pragma': 'no-cache',
             'Expires': '0'
           }
-        });
+        }, 10000);
         console.log(`[Poll] Attempt ${i + 1}/${maxAttempts}, Status: ${response.status}`);
         if (response.ok) {
           console.log(`[Poll] Video found: ${videoUrl}`);
@@ -194,10 +194,7 @@ export default function Home({ videos: initialVideos }) {
         const controller = new AbortController();
         const id = setTimeout(() => controller.abort(), timeout);
         try {
-          const absoluteUrl = url.startsWith('/')
-            ? `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}${url}`
-            : url;
-          const response = await fetch(absoluteUrl, { ...options, signal: controller.signal });
+          const response = await fetch(url, { ...options, signal: controller.signal });
           clearTimeout(id);
           console.log(`[Fetch] Success for ${url}, Status: ${response.status}`);
           return response;
