@@ -115,6 +115,23 @@ export default function Home({ videos: initialVideos }) {
     throw new Error('Video generation timed out');
   };
 
+  const refreshVideos = async () => {
+    const videosJsonUrl = 'https://raw.githubusercontent.com/g-h-0-S-t/sports-reels-videos/main/videos.json';
+    try {
+      const response = await fetch(videosJsonUrl);
+      if (response.ok) {
+        const videosData = await response.json();
+        setVideos(videosData.videos || []);
+        setDisplayedVideos(videosData.videos || []);
+        console.log('Refreshed videos.json:', videosData.videos);
+      } else {
+        console.error(`Failed to refresh videos.json: ${response.status}`);
+      }
+    } catch (error) {
+      console.error(`Error refreshing videos.json: ${error.message}`);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
@@ -133,31 +150,8 @@ export default function Home({ videos: initialVideos }) {
       }
 
       const newVideo = await response.json();
-      setVideos((prev) => {
-        const existingIndex = prev.findIndex(
-          (video) => video.videoUrl === newVideo.videoUrl
-        );
-        if (existingIndex !== -1) {
-          // Update existing video
-          const updatedVideos = [...prev];
-          updatedVideos[existingIndex] = newVideo;
-          return updatedVideos;
-        }
-        // Add new video
-        return [...prev, newVideo];
-      });
       await pollVideo(newVideo.videoUrl);
-      setDisplayedVideos((prev) => {
-        const existingIndex = prev.findIndex(
-          (video) => video.videoUrl === newVideo.videoUrl
-        );
-        if (existingIndex !== -1) {
-          const updatedVideos = [...prev];
-          updatedVideos[existingIndex] = newVideo;
-          return updatedVideos;
-        }
-        return [...prev, newVideo];
-      });
+      await refreshVideos(); // Refresh videos.json to get latest data
       setFormData({
         celebrityName: '',
         title: '',
@@ -255,10 +249,10 @@ export default function Home({ videos: initialVideos }) {
             <p className="no-results">No videos found for "{searchQuery}"</p>
           )}
           {displayedVideos.map((video, index) => (
-            <div key={video.id} className="reel-item">
+            <div key={`${video.id}-${Date.now()}`} className="reel-item">
               <video
                 ref={(el) => (videoRefs.current[index] = el)}
-                src={video.videoUrl}
+                src={`${video.videoUrl}?t=${Date.now()}`}
                 controls
                 loop
                 playsInline
