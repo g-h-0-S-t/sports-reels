@@ -61,11 +61,21 @@ export default async function handler(req, res) {
 
     try {
       await execPromise(command);
+      // Check if .mp4 exists
+      const videoFilePath = path.join(videosDir, path.basename(videoUrl));
+      if (!fs.existsSync(videoFilePath)) {
+        const logContent = fs.existsSync(logPath) ? fs.readFileSync(logPath, 'utf8') : 'Log file missing';
+        console.error(`Video file not found: ${videoFilePath}`);
+        console.error(`generate_videos.py log: ${logContent}`);
+        throw new Error(`Video file not generated: ${logContent}`);
+      }
       console.log('Video generation completed');
       res.status(200).json(newVideo);
     } catch (error) {
+      const logContent = fs.existsSync(logPath) ? fs.readFileSync(logPath, 'utf8') : 'Log file missing';
       console.error(`Video generation failed: ${error.message}`);
-      res.status(500).json({ error: `Video generation failed: ${error.message}` });
+      console.error(`generate_videos.py log: ${logContent}`);
+      res.status(500).json({ error: `Video generation failed: ${error.message}, Log: ${logContent}` });
     }
   } catch (error) {
     console.error('Error in generate-video API:', error.message);
