@@ -41,15 +41,15 @@ def fetch_images(query, count=5):
     if not access_key:
         logger.error("UNSPLASH_ACCESS_KEY environment variable not set")
         sys.exit(1)
-    url = f"https://api.unsplash.com/search/photos?query={query}&per_page={count}&client_id={access_key}&w=426&h=240"
+    url = f"https://api.unsplash.com/search/photos?query={query}&per_page={count}&client_id={access_key}&w=1280&h=720"
     try:
         response = requests.get(url, timeout=10)
         response.raise_for_status()
         data = response.json()
-        images = [photo['urls']['raw'] + '&w=426&h=240' for photo in data['results']]
+        images = [photo['urls']['raw'] + '&w=1280&h=720' for photo in data['results']]
         if len(data['results']) < count:
             logger.warning(f"Only {len(data['results'])} images for {query}, adding fallback")
-            images += ["https://source.unsplash.com/426x240/?cricket"] * (count - len(data['results']))
+            images += ["https://source.unsplash.com/1280x720/?sports"] * (count - len(data['results']))
         logger.info(f"Fetched {len(images)} images for query: {query}")
         return images
     except Exception as e:
@@ -65,45 +65,44 @@ def generate_script(celebrity, custom_script=None):
         generator = pipeline('text-generation', model='gpt2', device=-1)  # CPU only
         prompt = f"Tell me a short history of {celebrity} in 50 words."
         script = generator(prompt, max_length=60, num_return_sequences=1, truncation=True)[0]['generated_text']
-        logger.info(f"Generated script: ${script}")
+        logger.info(f"Generated script: {script}")
         return script
     except Exception as e:
-        logger.error(f"Failed to generate script for ${celebrity}: ${e}")
-        return f"A short history of ${celebrity} could not be generated."
+        logger.error(f"Failed to generate script for {celebrity}: {e}")
+        return f"A short history of {celebrity} could not be generated."
 
 def create_video(celebrity, output_path, custom_script=None):
-    logger.info(f"Creating video for ${celebrity}")
+    logger.info(f"Creating video for {celebrity}")
     log_memory_usage()
     log_dir_usage(os.path.dirname(output_path))
     
-    audio_path = os.path.join(os.path.dirname(output_path), f"${celebrity.replace(' ', '_')}_audio.mp3")
+    audio_path = os.path.join(os.path.dirname(output_path), f"{celebrity.replace(' ', '_')}_audio.mp3")
     try:
         # Generate script
         script = generate_script(celebrity, custom_script)
         
         # Create audio
-        logger.info(f"Saving audio to: ${audio_path}")
+        logger.info(f"Saving audio to: {audio_path}")
         tts = gTTS(script, slow=False)
         tts.save(audio_path)
         log_memory_usage()
         log_dir_usage(os.path.dirname(output_path))
         
-        # Load and trim audio to 10s
+        # Load audio
         audio = AudioFileClip(audio_path)
-        audio_duration = min(audio.duration, 10.0)  # Cap at 10s
-        logger.info(f"Audio duration: ${audio_duration}s")
-        audio = audio.subclip(0, audio_duration)
+        audio_duration = audio.duration  # Use full narration length
+        logger.info(f"Audio duration: {audio_duration}s")
         
         # Fetch images
         image_urls = fetch_images(celebrity)
         clips = []
         temp_image_paths = []
-        duration_per_image = 2.0  # 2s per image
-        total_video_duration = duration_per_image * len(image_urls)  # 10s for 5 images
-        logger.info(f"Total video duration: ${total_video_duration}s, frames: ${int(total_video_duration * 15)}")
+        num_images = len(image_urls)
+        duration_per_image = audio_duration / num_images if num_images > 0 else audio_duration  # Sync images to narration
+        logger.info(f"Total video duration: {audio_duration}s, {num_images} images, {duration_per_image}s per image, frames: {int(audio_duration * 30)}")
         for i, url in enumerate(image_urls):
-            img_path = os.path.join(os.path.dirname(output_path), f"temp_${i}.jpg")
-            logger.info(f"Saving image to: ${img_path}")
+            img_path = os.path.join(os.path.dirname(output_path), f"temp_{i}.jpg")
+            logger.info(f"Saving image to: {img_path}")
             img_data = requests.get(url, timeout=10).content
             with open(img_path, 'wb') as f:
                 f.write(img_data)
@@ -118,23 +117,23 @@ def create_video(celebrity, output_path, custom_script=None):
         final_video = video.set_audio(audio)
         
         # Write video
-        logger.info(f"Saving video to: ${output_path}")
+        logger.info(f"Saving video to: {output_path}")
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         final_video.write_videofile(
             output_path,
             codec='libx264',
             audio_codec='aac',
-            fps=15,
-            preset='ultrafast',
-            threads=1,
-            bitrate='300k'
+            fps=30,
+            preset='medium',
+            threads=2,
+            bitrate='2000k'
         )
-        logger.info(f"Video written successfully: ${output_path}")
+        logger.info(f"Video written successfully: {output_path}")
         log_memory_usage()
         log_dir_usage(os.path.dirname(output_path))
         
         # Clean up
-        logger.info(f"Cleaning up: ${audio_path}, ${temp_image_paths}")
+        logger.info(f"Cleaning up: {audio_path}, {temp_image_paths}")
         audio.close()
         final_video.close()
         for clip in clips:
@@ -144,7 +143,7 @@ def create_video(celebrity, output_path, custom_script=None):
             os.remove(img_path)
         
     except Exception as e:
-        logger.error(f"Failed to create video for ${celebrity}: ${e}")
+        logger.error(f"Failed to create video for {celebrity}: {e}")
         raise
 
 def main():
@@ -156,35 +155,42 @@ def main():
     check_dependencies()
     project_root = os.path.dirname(os.path.abspath(__file__))
     os.chdir(project_root)
-    logger.info(f"Current working directory: ${os.getcwd()}")
+    logger.info(f"Current working directory: {os.getcwd()}")
     log_memory_usage()
 
-    DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
-    VIDEOS_JSON = os.path.join(DATA_DIR, 'videos.json')
+    VIDEOS_JSON_URL = 'https://raw.githubusercontent.com/g-h-0-S-t/sports-reels-videos/main/videos.json'
     TEMP_VIDEOS_DIR = '/tmp/videos' if os.environ.get('NODE_ENV') == 'production' else os.path.join(os.path.dirname(os.path.abspath(__file__)), 'temp', 'videos')
+    
+    # Fetch videos.json from GitHub
+    video_data = {'videos': []}
     try:
-        with open(VIDEOS_JSON, 'r') as f:
-            video_data = json.load(f)
-    except FileNotFoundError:
-        logger.error(f"${VIDEOS_JSON} not found")
-        sys.exit(1)
-    except json.JSONDecodeError:
-        logger.error(f"Invalid JSON in ${VIDEOS_JSON}")
+        response = requests.get(VIDEOS_JSON_URL, timeout=10)
+        response.raise_for_status()
+        video_data = response.json()
+        logger.info("Fetched videos.json from GitHub")
+    except requests.exceptions.HTTPError as e:
+        if e.response.status_code == 404:
+            logger.info("videos.json not found in repo, using empty array")
+        else:
+            logger.error(f"Failed to fetch videos.json: {e}")
+            sys.exit(1)
+    except Exception as e:
+        logger.error(f"Error fetching videos.json: {e}")
         sys.exit(1)
 
     os.makedirs(TEMP_VIDEOS_DIR, exist_ok=True)
-    logger.info(f"Output directory: ${TEMP_VIDEOS_DIR}")
+    logger.info(f"Output directory: {TEMP_VIDEOS_DIR}")
 
     if args.single:
         video = next((v for v in video_data['videos'] if v['id'] == args.single), None)
         if not video:
-            logger.error(f"Video with ID ${args.single} not found")
+            logger.error(f"Video with ID {args.single} not found")
             sys.exit(1)
         celebrity = video['celebrityName']
         file_name = os.path.basename(video['videoUrl']).replace('.mp4', '') + '.mp4'
         output_path = os.path.join(TEMP_VIDEOS_DIR, file_name)
         custom_script = video.get('customScript')
-        logger.info(f"Generating video for ${celebrity} at ${output_path}")
+        logger.info(f"Generating video for {celebrity} at {output_path}")
         create_video(celebrity, output_path, custom_script)
     else:
         for video in video_data['videos']:
@@ -192,7 +198,7 @@ def main():
             file_name = os.path.basename(video['videoUrl']).replace('.mp4', '') + '.mp4'
             output_path = os.path.join(TEMP_VIDEOS_DIR, file_name)
             custom_script = video.get('customScript')
-            logger.info(f"Generating video for ${celebrity} at ${output_path}")
+            logger.info(f"Generating video for {celebrity} at {output_path}")
             create_video(celebrity, output_path, custom_script)
 
 if __name__ == "__main__":
