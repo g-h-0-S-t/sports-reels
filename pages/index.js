@@ -20,7 +20,7 @@ export async function getStaticProps() {
 export default function Home({ videos: initialVideos }) {
   const [videos, setVideos] = useState(initialVideos);
   const [displayedVideos, setDisplayedVideos] = useState(initialVideos);
-  const [currentVideo, setCurrentVideo] = useState(0);
+  const [currentVideo, setCurrentVideo] = useState(null);
   const [isStarted, setIsStarted] = useState(false);
   const [formData, setFormData] = useState({
     celebrityName: '',
@@ -39,21 +39,34 @@ export default function Home({ videos: initialVideos }) {
 
     const observer = new IntersectionObserver(
       (entries) => {
+        let mostVisibleVideo = null;
+        let maxIntersectionRatio = 0;
+
         entries.forEach((entry) => {
           const video = entry.target;
           const index = videoRefs.current.indexOf(video);
-          if (entry.isIntersecting && index !== -1) {
+          if (index !== -1 && entry.intersectionRatio > maxIntersectionRatio) {
+            mostVisibleVideo = { video, index };
+            maxIntersectionRatio = entry.intersectionRatio;
+          }
+        });
+
+        videoRefs.current.forEach((video, idx) => {
+          if (!video) return;
+          if (mostVisibleVideo && mostVisibleVideo.video === video && mostVisibleVideo.index === idx) {
             video.play().catch((error) => {
               console.error('Autoplay failed:', error);
             });
-            setCurrentVideo(index);
+            setCurrentVideo(idx);
           } else {
             video.pause();
             video.currentTime = 0;
           }
         });
       },
-      { threshold: 0.7 }
+      {
+        threshold: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
+      }
     );
 
     videoRefs.current.forEach((video, index) => {
@@ -72,7 +85,8 @@ export default function Home({ videos: initialVideos }) {
   useEffect(() => {
     console.log('Videos state updated:', videos);
     console.log('Displayed videos:', displayedVideos);
-  }, [videos, displayedVideos]);
+    console.log('Current video index:', currentVideo);
+  }, [videos, displayedVideos, currentVideo]);
 
   const handleSearch = (e) => {
     const query = e.target.value.toLowerCase();
@@ -151,7 +165,7 @@ export default function Home({ videos: initialVideos }) {
 
       const newVideo = await response.json();
       await pollVideo(newVideo.videoUrl);
-      await refreshVideos(); // Refresh videos.json to get latest data
+      await refreshVideos();
       setFormData({
         celebrityName: '',
         title: '',
