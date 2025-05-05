@@ -20,14 +20,18 @@ html {
 
 .reel-item {
   height: 100vh;
-  scroll-snap-align: start;
+  scroll-snap-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   position: relative;
 }
 
 .reel-video {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  max-width: 100%;
+  max-height: 80vh;
+  object-fit: contain;
 }
 
 .overlay {
@@ -47,6 +51,7 @@ html {
   background-color: #000;
   color: white;
   text-align: center;
+  scroll-snap-align: center;
 }
 
 .start-screen h1 {
@@ -74,6 +79,9 @@ html {
   background-color: #111;
   color: white;
   scroll-snap-align: start;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .form-container h2 {
@@ -164,14 +172,10 @@ html {
   color: white;
   font-size: 1.2rem;
   text-align: center;
-  scroll-snap-align: start;
+  scroll-snap-align: center;
 }
 
 @media (max-width: 768px) {
-  .reel-video {
-    object-fit: contain;
-  }
-
   .start-screen h1 {
     font-size: 1.8rem;
   }
