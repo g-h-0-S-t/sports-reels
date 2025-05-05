@@ -36,7 +36,7 @@ def check_dependencies():
             logger.error(f"Dependency {dep} failed to load: {e}")
             sys.exit(1)
 
-def fetch_images(query, count=4):
+def fetch_images(query, count=5):
     access_key = "LLn6Z2X8dg630nsWa5k96uNtjPPrG8R91oWAE0LpAd8"
     url = f"https://api.unsplash.com/search/photos?query={query}&per_page={count}&client_id={access_key}&w=426&h=240"
     try:
@@ -96,7 +96,7 @@ def create_video(celebrity, output_path, custom_script=None):
         clips = []
         temp_image_paths = []
         duration_per_image = 2.0  # 2s per image
-        total_video_duration = duration_per_image * len(image_urls)  # 8s for 4 images
+        total_video_duration = duration_per_image * len(image_urls)  # 10s for 5 images
         logger.info(f"Total video duration: ${total_video_duration}s, frames: ${int(total_video_duration * 15)}")
         for i, url in enumerate(image_urls):
             img_path = os.path.join(os.path.dirname(output_path), f"temp_${i}.jpg")
@@ -158,7 +158,7 @@ def main():
 
     DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
     VIDEOS_JSON = os.path.join(DATA_DIR, 'videos.json')
-    PUBLIC_VIDEOS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'public', 'videos')
+    TEMP_VIDEOS_DIR = '/tmp/videos' if os.environ.get('NODE_ENV') == 'production' else os.path.join(os.path.dirname(os.path.abspath(__file__)), 'temp', 'videos')
     try:
         with open(VIDEOS_JSON, 'r') as f:
             video_data = json.load(f)
@@ -169,8 +169,8 @@ def main():
         logger.error(f"Invalid JSON in ${VIDEOS_JSON}")
         sys.exit(1)
 
-    os.makedirs(PUBLIC_VIDEOS_DIR, exist_ok=True)
-    logger.info(f"Output directory: ${PUBLIC_VIDEOS_DIR}")
+    os.makedirs(TEMP_VIDEOS_DIR, exist_ok=True)
+    logger.info(f"Output directory: ${TEMP_VIDEOS_DIR}")
 
     if args.single:
         video = next((v for v in video_data['videos'] if v['id'] == args.single), None)
@@ -179,7 +179,7 @@ def main():
             sys.exit(1)
         celebrity = video['celebrityName']
         file_name = os.path.basename(video['videoUrl']).replace('.mp4', '') + '.mp4'
-        output_path = os.path.join(PUBLIC_VIDEOS_DIR, file_name)
+        output_path = os.path.join(TEMP_VIDEOS_DIR, file_name)
         custom_script = video.get('customScript')
         logger.info(f"Generating video for ${celebrity} at ${output_path}")
         create_video(celebrity, output_path, custom_script)
@@ -187,7 +187,7 @@ def main():
         for video in video_data['videos']:
             celebrity = video['celebrityName']
             file_name = os.path.basename(video['videoUrl']).replace('.mp4', '') + '.mp4'
-            output_path = os.path.join(PUBLIC_VIDEOS_DIR, file_name)
+            output_path = os.path.join(TEMP_VIDEOS_DIR, file_name)
             custom_script = video.get('customScript')
             logger.info(f"Generating video for ${celebrity} at ${output_path}")
             create_video(celebrity, output_path, custom_script)
