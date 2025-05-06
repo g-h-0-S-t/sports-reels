@@ -139,7 +139,7 @@ def create_video(image_paths, output_path, celebrity, audio_path=None, duration_
         if audio_path and 'audio' in locals():
             audio.close()
 
-def generate_single_video(celebrity, output_dir, title, description, script, video_url=None):
+def generate_single_video(celebrity, output_dir, title, description, script):
     """Generate a single video for a celebrity using a temporary directory."""
     logging.info(f"Generating video for {celebrity}")
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -167,7 +167,6 @@ def main():
     parser = argparse.ArgumentParser(description="Generate sports celebrity videos.")
     parser.add_argument("--single", help="Generate a single video for a specific celebrity")
     parser.add_argument("--celebrity", help="Name of the celebrity")
-    parser.add_argument("--video-url", help="URL of the video (optional)")
     parser.add_argument("--title", help="Title of the video")
     parser.add_argument("--description", help="Description of the video")
     parser.add_argument("--script", help="Custom narration script for the video")

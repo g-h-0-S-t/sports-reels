@@ -40,7 +40,6 @@ export async function getStaticProps() {
 export default function Home({ videos: initialVideos }) {
   const [videos, setVideos] = useState(initialVideos);
   const [displayedVideos, setDisplayedVideos] = useState(initialVideos);
-  const [currentVideo, setCurrentVideo] = useState(null);
   const [isStarted, setIsStarted] = useState(false);
   const [formData, setFormData] = useState({
     celebrityName: '',
@@ -108,12 +107,11 @@ export default function Home({ videos: initialVideos }) {
   useEffect(() => {
     console.log('[State Update] Videos:', videos);
     console.log('[State Update] Displayed videos:', displayedVideos);
-    console.log('[State Update] Current video index:', currentVideo);
     console.log('[State Update] Is form active:', isFormActive);
     console.log('[State Update] Is generating:', isGenerating);
     console.log('[State Update] Is refreshing:', isRefreshing);
     console.log('[State Update] Refresh key:', refreshKey);
-  }, [videos, displayedVideos, currentVideo, isFormActive, isGenerating, isRefreshing, refreshKey]);
+  }, [videos, displayedVideos, isFormActive, isGenerating, isRefreshing, refreshKey]);
 
   useEffect(() => {
     console.log('[Videos State] Updated:', videos.length, 'videos');

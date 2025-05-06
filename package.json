@@ -11,7 +11,6 @@
     "install-python3": "if [ \"$OS\" != \"Windows_NT\" ]; then (command -v apt-get && sudo apt-get update && sudo apt-get install -y python3 python3-pip) || (command -v brew && brew install python3); else echo 'Windows: Please install Python 3 manually from https://www.python.org/downloads/' && exit 1; fi",
     "generate-videos": "python3 generate_videos.py",
     "install-python-deps": "if [ \"$OS\" != \"Windows_NT\" ]; then chmod -R u+rw .; else icacls . /grant %username%:F /T; fi && pip3 install -r requirements.txt",
-    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "postinstall": "echo 'Python dependencies installed automatically on npm run dev/build/vercel-build. Manual install: pip3 install -r requirements.txt'"
   },
   "dependencies": {
@@ -20,10 +19,6 @@
     "node-fetch": "^2.6.12",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
-  },
-  "devDependencies": {
-    "eslint": "^8.57.0",
-    "eslint-config-next": "^12.3.1"
   },
   "engines": {
     "node": ">=18.0.0"
