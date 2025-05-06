@@ -1,6 +1,5 @@
 ---
-author:
-g-h-0-S-t
+author: g-h-0-S-t
 date: May 2025
 title: "Sports Reels: System Documentation"
 ---
