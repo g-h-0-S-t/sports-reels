@@ -4,11 +4,9 @@ date: May 2025
 title: "Sports Reels: System Documentation"
 ---
 
-::: center
 **Version 1.0.0**\
 Deployed at: <https://sports-reels.onrender.com>\
 Repository: <https://github.com/g-h-0-S-t/sports-reels>
-:::
 
 # Introduction
 
